@@ -1,0 +1,79 @@
+services:
+  postgresql:
+    container_name: temporal-postgresql
+    image: postgres:${POSTGRESQL_VERSION}
+    environment:
+      POSTGRES_USER: ${APP_DATABASE_USERNAME}
+      POSTGRES_PASSWORD: ${APP_DATABASE_PASSWORD}
+      POSTGRES_DB: ${APP_DATABASE_NAME}
+    env_file:
+      - ./configs/.env
+    networks:
+      - temporal-network
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  redis:
+    container_name: temporal-redis
+    image: redis:${REDIS_VERSION}
+    command: >
+      redis-server --appendonly yes --requirepass ${APP_REDIS_PASSWORD}
+    networks:
+      - temporal-network
+    env_file:
+      - ./configs/.env
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+
+  temporal:
+    container_name: temporal
+    image: temporalio/auto-setup:${TEMPORAL_VERSION}
+    depends_on:
+      - postgresql
+      - redis
+    environment:
+      - DB=postgres12
+      - DB_PORT=5432
+      - POSTGRES_USER=${APP_DATABASE_USERNAME}
+      - POSTGRES_PWD=${APP_DATABASE_PASSWORD}
+      - POSTGRES_SEEDS=postgresql
+      - DYNAMIC_CONFIG_FILE_PATH=config/dynamicconfig/development-sql.yaml
+      - TEMPORAL_ADDRESS=temporal:7233
+      - TEMPORAL_CLI_ADDRESS=temporal:7233
+    env_file:
+      - ./configs/.env
+    networks:
+      - temporal-network
+    ports:
+      - "7233:7233"
+    volumes:
+      - ./dynamicconfig:/etc/temporal/config/dynamicconfig
+
+  temporal-ui:
+    container_name: temporal-ui
+    image: temporalio/ui:${TEMPORAL_UI_VERSION}
+    depends_on:
+      - temporal
+    env_file:
+      - ./configs/.env
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+      - TEMPORAL_CORS_ORIGINS=http://localhost:3000
+    networks:
+      - temporal-network
+    ports:
+      - "8082:8080"
+
+networks:
+  temporal-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
+    driver: local
+  redis-data:
+    driver: local

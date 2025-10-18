@@ -1,0 +1,132 @@
+---
+- name: Configure EC2 Instance with Docker
+  hosts: webservers
+  become: yes
+  vars:
+    docker_compose_version: "v2.24.0"
+    docker_users:
+      - "ubuntu"
+      - "appuser"
+
+    app_directory: "/opt/agent"
+    docker_compose_file: "docker-compose.yaml"
+
+  tasks:
+    - name: Update apt package cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Install required system packages
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg
+          - lsb-release
+          - python3-pip
+          - git
+          - htop
+        state: present
+
+    - name: Add Docker GPG key
+      apt_key:
+        url: "https://download.docker.com/linux/ubuntu/gpg"
+        state: present
+
+    - name: Add Docker repository
+      apt_repository:
+        repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+        state: present
+
+    - name: Install Docker Engine
+      apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+        state: present
+        update_cache: yes
+
+    - name: Install Docker Compose
+      get_url:
+        url: "https://github.com/docker/compose/releases/download/{{ docker_compose_version }}/docker-compose-linux-x86_64"
+        dest: "/usr/local/bin/docker-compose"
+        mode: "0755"
+
+    - name: Add users to docker group
+      user:
+        name: "{{ item }}"
+        groups: docker
+        append: yes
+      loop: "{{ docker_users }}"
+      when: item in ansible_facts.get('users', {})
+
+    - name: Start and enable Docker service
+      systemd:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Create application directory
+      file:
+        path: "{{ app_directory }}"
+        state: directory
+        owner: "ubuntu"
+        group: "ubuntu"
+        mode: '0755'
+
+    - name: Copy Docker Compose file
+      copy:
+        src: "files/{{ docker_compose_file }}"
+        dest: "{{ app_directory }}/docker-compose.yml"
+        owner: "ubuntu"
+        group: "ubuntu"
+        mode: '0644'
+
+    - name: Copy environment file (if exists)
+      copy:
+        src: "files/.env"
+        dest: "{{ app_directory }}/.env"
+        owner: "ubuntu"
+        group: "ubuntu"
+        mode: '0644'
+      ignore_errors: yes
+
+    - name: Pull Docker images
+      community.docker.docker_compose:
+        project_src: "{{ app_directory }}"
+        pull: yes
+      become_user: "ubuntu"
+
+    - name: Start Docker containers
+      community.docker.docker_compose:
+        project_src: "{{ app_directory }}"
+        state: present
+      become_user: "ubuntu"
+
+    - name: Show Docker system info
+      community.docker.docker_info:
+      register: docker_info
+
+    - name: Display Docker version
+      debug:
+        msg: "Docker version: {{ docker_info.docker_version }}"
+
+    - name: Display Docker Compose status
+      shell: "docker-compose ps"
+      args:
+        chdir: "{{ app_directory }}"
+      register: compose_status
+      become_user: "ubuntu"
+
+    - name: Show running containers
+      debug:
+        msg: "{{ compose_status.stdout }}"
+
+  handlers:
+    - name: restart docker
+      systemd:
+        name: docker
+        state: restarted

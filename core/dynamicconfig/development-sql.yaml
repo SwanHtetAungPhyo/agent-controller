@@ -1,0 +1,47 @@
+# Temporal Dynamic Configuration for Development with SQL
+# Place this file in ./dynamicconfig/development-sql.yaml
+
+# Frontend service configuration
+frontend.enableUpdateWorkflowExecution:
+  - value: true
+
+# History service configuration
+history.defaultActivityRetryPolicy:
+  - value:
+      InitialIntervalInSeconds: 1
+      MaximumIntervalInSeconds: 100
+      BackoffCoefficient: 2.0
+      MaximumAttempts: 3
+
+# Matching service configuration
+matching.numTaskqueueWritePartitions:
+  - value: 4
+    constraints: {}
+
+matching.numTaskqueueReadPartitions:
+  - value: 4
+    constraints: {}
+
+# Worker service configuration
+worker.executionDataCacheSize:
+  - value: 512
+
+# System limits
+limit.maxIDLength:
+  - value: 1000
+
+# Archival configuration (disabled for development)
+system.enableLogExecutionHistory:
+  - value: false
+
+# Visibility configuration
+system.advancedVisibilityWritingMode:
+  - value: "off"
+
+# Development-specific settings
+system.forceSearchAttributesCacheRefreshOnRead:
+  - value: true
+
+# Enable debug logging for development
+system.enableDebugMode:
+  - value: true

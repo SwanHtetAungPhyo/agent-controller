@@ -1,0 +1,43 @@
+version: "2"
+sql:
+  - schema: "db/migrations"
+    queries: "db/query"
+    engine: "postgresql"
+    gen:
+      go:
+        package: "db"
+        out: "db/sqlc"
+        sql_package: "pgx/v5"
+        emit_json_tags: true
+        json_tags_case_style: snake
+        emit_interface: true
+        emit_empty_slices: true
+        emit_all_enum_values: true
+        emit_prepared_queries: false
+        emit_exact_table_names: false
+        emit_pointers_for_null_types: true
+
+        overrides:
+          - db_type: "uuid"
+            go_type: "github.com/google/uuid.UUID"
+          - db_type: "pg_catalog.int4"
+            go_type: "int32"
+          - db_type: "pg_catalog.int8"
+            go_type: "int64"
+          - db_type: "serial"
+            go_type: "int64"
+          - db_type: "text"
+            go_type: "string"
+          - db_type: "bool"
+            go_type: "bool"
+          - db_type: "pg_catalog.numeric"
+            go_type: "github.com/shopspring/decimal.Decimal"
+          - db_type: "vector(768)"
+            go_type: "github.com/pgvector/pgvector-go.Vector"
+
+          # JSON type overrides for better type safety
+          - db_type: "json"
+            go_type: "github.com/jackc/pgx/v5/pgtype.JSON"
+          - db_type: "jsonb"
+            go_type: "github.com/jackc/pgx/v5/pgtype.JSON"
+

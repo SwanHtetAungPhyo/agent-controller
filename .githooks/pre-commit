@@ -1,0 +1,36 @@
+#!/bin/bash
+
+
+echo "Running pre-commit checks..."
+
+if ! command -v go &> /dev/null; then
+    echo "Error: go command not found"
+    exit 1
+fi
+
+STAGED_GO_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep '\.go$')
+
+if [[ -z "$STAGED_GO_FILES" ]]; then
+    echo "No staged Go files to format"
+    exit 0
+fi
+
+echo "Found staged Go files:"
+echo "$STAGED_GO_FILES"
+
+# Run go fmt on staged files
+echo "Running go fmt..."
+for file in $STAGED_GO_FILES; do
+    if [[ -f "$file" ]]; then
+        go fmt "./$(dirname "$file")"
+        echo "Formatted: $file"
+    fi
+done
+
+for file in $STAGED_GO_FILES; do
+    if [[ -f "$file" ]]; then
+        git add "$file"
+    fi
+done
+
+echo "Pre-commit checks completed successfully!"
