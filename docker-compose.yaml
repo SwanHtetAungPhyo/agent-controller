@@ -15,7 +15,7 @@ services:
       - TEMPORAL_ADDRESS=temporal:7233
       - SERVER_PORT=8080
     env_file:
-      - ./configs/.env
+      - .env
     networks:
       - temporal-network
     ports:
@@ -38,7 +38,7 @@ services:
       POSTGRES_PASSWORD: ${APP_DATABASE_PASSWORD}
       POSTGRES_DB: ${APP_DATABASE_NAME}
     env_file:
-      - ./configs/.env
+      - .env
     networks:
       - temporal-network
     ports:
@@ -61,7 +61,7 @@ services:
     networks:
       - temporal-network
     env_file:
-      - ./configs/.env
+      - .env
     ports:
       - "6379:6379"
     volumes:
@@ -91,7 +91,7 @@ services:
       - TEMPORAL_ADDRESS=temporal:7233
       - TEMPORAL_CLI_ADDRESS=temporal:7233
     env_file:
-      - ./configs/.env
+      - .env
     networks:
       - temporal-network
     ports:
@@ -105,21 +105,6 @@ services:
       timeout: 10s
       retries: 5
 
-  temporal-ui:
-    container_name: temporal-ui
-    image: temporalio/ui:${TEMPORAL_UI_VERSION}
-    depends_on:
-      - temporal
-    env_file:
-      - ./configs/.env
-    environment:
-      - TEMPORAL_ADDRESS=temporal:7233
-      - TEMPORAL_CORS_ORIGINS=http://localhost:3000
-    networks:
-      - temporal-network
-    ports:
-      - "8082:8080"
-    restart: unless-stopped
 
 networks:
   temporal-network:
