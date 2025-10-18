@@ -5,11 +5,15 @@ on:
     branches: [main, dev]
   pull_request:
     branches: [main]
+defaults:
+  run:
+    working-directory: ./core
 
 permissions:
   contents: read
   actions: read
   security-events: write
+
 
 env:
   GO_VERSION: '1.25.1'
