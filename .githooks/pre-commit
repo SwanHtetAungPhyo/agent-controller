@@ -18,7 +18,6 @@ fi
 echo "Found staged Go files:"
 echo "$STAGED_GO_FILES"
 
-# Run go fmt on staged files
 echo "Running go fmt..."
 for file in $STAGED_GO_FILES; do
     if [[ -f "$file" ]]; then
