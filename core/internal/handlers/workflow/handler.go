@@ -34,6 +34,6 @@ func NewHandler(
 }
 
 func (w *Handler) RegisterRoutes() {
-	workflowApi := w.app.Group("/workflow")
+	workflowApi := w.app.Group("/workflows")
 	workflowApi.POST("/", w.middleWareManger.AuthMiddleware(), w.SummeryWorkflowSchedule)
 }

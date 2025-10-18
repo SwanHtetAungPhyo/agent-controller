@@ -26,7 +26,7 @@
 │   │   │   └── 000002_workflow.up.sql
 │   │   ├── query
 │   │   │   ├── user.sql
-│   │   │   └── workflow.sql
+│   │   │   └── workflows.sql
 │   │   ├── schema
 │   │   │   └── schema.sql
 │   │   └── sqlc
@@ -35,7 +35,7 @@
 │   │       ├── querier.go
 │   │       ├── store.go
 │   │       ├── user.sql.go
-│   │       └── workflow.sql.go
+│   │       └── workflows.sql.go
 │   ├── dynamicconfig
 │   │   └── development-sql.yaml
 │   ├── go.mod
@@ -46,7 +46,7 @@
 │   │   │   │   └── manager.go
 │   │   │   ├── worker
 │   │   │   │   └── worker.go
-│   │   │   └── workflow
+│   │   │   └── workflows
 │   │   │       ├── manger.go
 │   │   │       └── stockSummeryWorkflow.go
 │   │   ├── handlers
@@ -56,7 +56,7 @@
 │   │   │   │   ├── handle_user_update.go
 │   │   │   │   ├── handler.go
 │   │   │   │   └── hanlde_user_create.go
-│   │   │   └── workflow
+│   │   │   └── workflows
 │   │   │       ├── handle_summeryWorkFlow.go
 │   │   │       └── handler.go
 │   │   ├── middleware
@@ -68,7 +68,7 @@
 │   │       ├── clerk.go
 │   │       ├── keys.go
 │   │       ├── response.go
-│   │       └── workflow.go
+│   │       └── workflows.go
 │   ├── makefile
 │   ├── pkg
 │   │   └── circuitBreaker

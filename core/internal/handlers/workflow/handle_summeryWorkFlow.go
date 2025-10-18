@@ -36,7 +36,7 @@ func (w *Handler) SummeryWorkflowSchedule(c *gin.Context) {
 		CreatedAt:    pgtype.Timestamp{},
 	})
 	if err != nil {
-		log.Debug().Err(err).Msgf("Error creating workflow schedule in db")
+		log.Debug().Err(err).Msgf("Error creating workflows schedule in db")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -77,14 +77,14 @@ func (w *Handler) SummeryWorkflowSchedule(c *gin.Context) {
 	}
 
 	switch req.WorkflowType {
-	case "summery-workflow":
+	case "summery-workflows":
 		scheduleOptions.Action = &client.ScheduleWorkflowAction{
 			ID:        workflowInDb.ID.String(),
 			Workflow:  w.workflowManger.StockSummeryWorkflow,
 			TaskQueue: "default",
 		}
 	default:
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid workflow type"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid workflows type"})
 		return
 	}
 

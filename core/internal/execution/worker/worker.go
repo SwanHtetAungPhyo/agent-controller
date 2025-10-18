@@ -38,7 +38,7 @@ func New(cfg *configs.AppConfig, temporalClient client.Client, taskQueue string)
 
 func (w *Worker) RegisterWorkflow(workflow interface{}) {
 	w.worker.RegisterWorkflow(workflow)
-	log.Info().Msgf("Registered workflow: %T", workflow)
+	log.Info().Msgf("Registered workflows: %T", workflow)
 }
 
 func (w *Worker) RegisterActivity(activity interface{}) {

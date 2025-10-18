@@ -7,8 +7,8 @@ import (
 
 func (w *Manager) StockSummeryWorkflow(ctx workflow.Context) {
 	logger := workflow.GetLogger(ctx)
-	logger.Info("Stock Summery workflow started")
-	logger.Info("Starting workflow")
-	log.Debug().Msg("Starting workflow")
+	logger.Info("Stock Summery workflows started")
+	logger.Info("Starting workflows")
+	log.Debug().Msg("Starting workflows")
 
 }
