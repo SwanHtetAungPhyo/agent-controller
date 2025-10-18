@@ -99,7 +99,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: go-binary
-          path: ./
+          path: ./core
 
       - name: Verify binary exists
         run: |
