@@ -9,37 +9,26 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const createSystemAnalysis = `-- name: CreateSystemAnalysis :one
-INSERT INTO system_defined_analysis (analysis_type, description) VALUES ($1, $2) returning id, analysis_type, description
-`
-
-type CreateSystemAnalysisParams struct {
-	AnalysisType *string `json:"analysis_type"`
-	Description  *string `json:"description"`
-}
-
-func (q *Queries) CreateSystemAnalysis(ctx context.Context, arg CreateSystemAnalysisParams) (SystemDefinedAnalysis, error) {
-	row := q.db.QueryRow(ctx, createSystemAnalysis, arg.AnalysisType, arg.Description)
-	var i SystemDefinedAnalysis
-	err := row.Scan(&i.ID, &i.AnalysisType, &i.Description)
-	return i, err
-}
-
 const createUser = `-- name: CreateUser :one
-INSERT INTO kainos_user (clerk_id, first_name, email) VALUES ($1, $2, $3) returning id, clerk_id, first_name, email, created_at, deleted_at, updated_at
+INSERT INTO kainos_user (id, clerk_id, first_name, email) VALUES ($1,$2, $3, $4) returning id, clerk_id, first_name, email, created_at, deleted_at, updated_at
 `
 
 type CreateUserParams struct {
-	ClerkID   string  `json:"clerk_id"`
-	FirstName *string `json:"first_name"`
-	Email     string  `json:"email"`
+	ID        uuid.UUID `json:"id"`
+	ClerkID   string    `json:"clerk_id"`
+	FirstName *string   `json:"first_name"`
+	Email     string    `json:"email"`
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (KainosUser, error) {
-	row := q.db.QueryRow(ctx, createUser, arg.ClerkID, arg.FirstName, arg.Email)
+	row := q.db.QueryRow(ctx, createUser,
+		arg.ID,
+		arg.ClerkID,
+		arg.FirstName,
+		arg.Email,
+	)
 	var i KainosUser
 	err := row.Scan(
 		&i.ID,
@@ -51,163 +40,4 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (KainosU
 		&i.UpdatedAt,
 	)
 	return i, err
-}
-
-const createUserAnalysis = `-- name: CreateUserAnalysis :one
-INSERT INTO kainos_user_analysis (description, s3_url, customer_id) VALUES ($1, $2, $3) returning id, description, s3_url, customer_id, created_at
-`
-
-type CreateUserAnalysisParams struct {
-	Description *string   `json:"description"`
-	S3Url       *string   `json:"s3_url"`
-	CustomerID  uuid.UUID `json:"customer_id"`
-}
-
-func (q *Queries) CreateUserAnalysis(ctx context.Context, arg CreateUserAnalysisParams) (KainosUserAnalysis, error) {
-	row := q.db.QueryRow(ctx, createUserAnalysis, arg.Description, arg.S3Url, arg.CustomerID)
-	var i KainosUserAnalysis
-	err := row.Scan(
-		&i.ID,
-		&i.Description,
-		&i.S3Url,
-		&i.CustomerID,
-		&i.CreatedAt,
-	)
-	return i, err
-}
-
-const createUserWorkflow = `-- name: CreateUserWorkflow :one
-INSERT INTO kainos_user_workflow (workflow_id, customer_id, meta_data, status) VALUES ($1, $2, $3, $4) returning id, workflow_id, customer_id, meta_data, cron_time, status, created_at, updated_at
-`
-
-type CreateUserWorkflowParams struct {
-	WorkflowID uuid.UUID   `json:"workflow_id"`
-	CustomerID interface{} `json:"customer_id"`
-	MetaData   []byte      `json:"meta_data"`
-	Status     *string     `json:"status"`
-}
-
-func (q *Queries) CreateUserWorkflow(ctx context.Context, arg CreateUserWorkflowParams) (KainosUserWorkflow, error) {
-	row := q.db.QueryRow(ctx, createUserWorkflow,
-		arg.WorkflowID,
-		arg.CustomerID,
-		arg.MetaData,
-		arg.Status,
-	)
-	var i KainosUserWorkflow
-	err := row.Scan(
-		&i.ID,
-		&i.WorkflowID,
-		&i.CustomerID,
-		&i.MetaData,
-		&i.CronTime,
-		&i.Status,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
-}
-
-const createWorkflow = `-- name: CreateWorkflow :one
-INSERT INTO kainos_workflow (workflow_name, workflow_description, price) VALUES ($1, $2, $3) returning id, workflow_name, workflow_description, created_at, deleted_at, updated_at, price
-`
-
-type CreateWorkflowParams struct {
-	WorkflowName        string   `json:"workflow_name"`
-	WorkflowDescription string   `json:"workflow_description"`
-	Price               *float64 `json:"price"`
-}
-
-func (q *Queries) CreateWorkflow(ctx context.Context, arg CreateWorkflowParams) (KainosWorkflow, error) {
-	row := q.db.QueryRow(ctx, createWorkflow, arg.WorkflowName, arg.WorkflowDescription, arg.Price)
-	var i KainosWorkflow
-	err := row.Scan(
-		&i.ID,
-		&i.WorkflowName,
-		&i.WorkflowDescription,
-		&i.CreatedAt,
-		&i.DeletedAt,
-		&i.UpdatedAt,
-		&i.Price,
-	)
-	return i, err
-}
-
-const getUserWorkflow = `-- name: GetUserWorkflow :many
-SELECT workflow_id, workflow_name, meta_data, cron_time, status, kainos_user_workflow.created_at, kainos_user_workflow.updated_at
-        from kainos_user_workflow
-        join kainos_workflow
-            on kainos_user_workflow.workflow_id = kainos_workflow.id
-        join kainos_user
-        on kainos_user_workflow.customer_id = kainos_user.id
-`
-
-type GetUserWorkflowRow struct {
-	WorkflowID   uuid.UUID        `json:"workflow_id"`
-	WorkflowName string           `json:"workflow_name"`
-	MetaData     []byte           `json:"meta_data"`
-	CronTime     *string          `json:"cron_time"`
-	Status       *string          `json:"status"`
-	CreatedAt    pgtype.Timestamp `json:"created_at"`
-	UpdatedAt    pgtype.Timestamp `json:"updated_at"`
-}
-
-func (q *Queries) GetUserWorkflow(ctx context.Context) ([]GetUserWorkflowRow, error) {
-	rows, err := q.db.Query(ctx, getUserWorkflow)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []GetUserWorkflowRow{}
-	for rows.Next() {
-		var i GetUserWorkflowRow
-		if err := rows.Scan(
-			&i.WorkflowID,
-			&i.WorkflowName,
-			&i.MetaData,
-			&i.CronTime,
-			&i.Status,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const getWorkflow = `-- name: GetWorkflow :many
-SELECT id, workflow_name, workflow_description, created_at, deleted_at, updated_at, price from kainos_workflow
-`
-
-func (q *Queries) GetWorkflow(ctx context.Context) ([]KainosWorkflow, error) {
-	rows, err := q.db.Query(ctx, getWorkflow)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []KainosWorkflow{}
-	for rows.Next() {
-		var i KainosWorkflow
-		if err := rows.Scan(
-			&i.ID,
-			&i.WorkflowName,
-			&i.WorkflowDescription,
-			&i.CreatedAt,
-			&i.DeletedAt,
-			&i.UpdatedAt,
-			&i.Price,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
 }
