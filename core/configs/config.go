@@ -3,147 +3,131 @@ package configs
 import (
 	"fmt"
 	"log"
-	"os"
-	"strings"
 
+	"github.com/caarlos0/env/v6"
 	"github.com/joho/godotenv"
 )
 
 type AppConfig struct {
-	AppName        string
-	AppEnvironment string
-	AppDebug       bool
+	// App Configuration
+	AppName        string `env:"APP_NAME" envDefault:""`
+	AppEnvironment string `env:"APP_APP_ENVIRONMENT" envDefault:"development"`
+	AppDebug       bool   `env:"APP_APP_DEBUG" envDefault:"false"`
 
-	ServerHost           string
-	ServerPort           int
-	ServerAllowedOrigins []string // Add this field
+	// Server Configuration
+	ServerHost string `env:"APP_SERVER_HOST" envDefault:"0.0.0.0"`
+	ServerPort int    `env:"APP_SERVER_PORT" envDefault:"8081"`
 
-	ClerkSecret string
+	// Authentication
+	ClerkSecret string `env:"CLERK_SECRET" envDefault:""`
+	JWTSecret   string `env:"APP_JWT_SECRET" envDefault:""`
+	JWTTTL      int    `env:"APP_JWT_TTL" envDefault:"8640"`
 
-	JWTSecret string
-	JWTTTL    int
+	// Database Configuration
+	DatabaseHost     string `env:"APP_DATABASE_HOST" envDefault:"localhost"`
+	DatabasePort     int    `env:"APP_DATABASE_PORT" envDefault:"5432"`
+	DatabaseUsername string `env:"APP_DATABASE_USERNAME" envDefault:""`
+	DatabasePassword string `env:"APP_DATABASE_PASSWORD" envDefault:""`
+	DatabaseName     string `env:"APP_DATABASE_NAME" envDefault:""`
+	DatabaseSSLMode  string `env:"APP_DATABASE_SSL_MODE" envDefault:"disable"`
+	DatabaseURL      string `env:"DATABASE_URL" envDefault:""`
 
-	DatabaseHost     string
-	DatabasePort     int
-	DatabaseUsername string
-	DatabasePassword string
-	DatabaseName     string
-	DatabaseSSLMode  string
-	DatabaseURL      string
+	// Redis Configuration
+	RedisHost     string `env:"APP_REDIS_HOST" envDefault:"localhost"`
+	RedisPort     int    `env:"APP_REDIS_PORT" envDefault:"6379"`
+	RedisPassword string `env:"APP_REDIS_PASSWORD" envDefault:""`
+	RedisDB       int    `env:"APP_REDIS_DB" envDefault:"0"`
 
-	RedisHost     string
-	RedisPort     int
-	RedisPassword string
-	RedisDB       int
+	// Temporal Configuration
+	TemporalHostPort  string `env:"APP_TEMPORAL_HOSTPORT" envDefault:"localhost:7233"`
+	TemporalNamespace string `env:"APP_TEMPORAL_NAMESPACE" envDefault:"default"`
+	TemporalTLS       bool   `env:"APP_TEMPORAL_TLS" envDefault:"false"`
 
-	TemporalHostPort  string
-	TemporalNamespace string
-	TemporalTLS       bool
+	// Svix Configuration
+	SvixSecret string `env:"APP_SVIX_SECRET" envDefault:""`
+	SvixAppID  string `env:"APP_SVIX_APP_ID" envDefault:""`
 
-	SvixSecret string
-	SvixAppID  string
+	// Core API
+	CoreAPIGRPCEndpoint string `env:"APP_CORE_API_GRPC_ENDPOINT" envDefault:""`
 
-	CoreAPIGRPCEndpoint string
+	// Version Information
+	PostgreSQLVersion string `env:"POSTGRESQL_VERSION" envDefault:""`
+	RedisVersion      string `env:"REDIS_VERSION" envDefault:""`
+	TemporalVersion   string `env:"TEMPORAL_VERSION" envDefault:""`
+	TemporalUIVersion string `env:"TEMPORAL_UI_VERSION" envDefault:""`
+	MastraUrl         string `env:"MASTRA_URL" envDefault:""`
 
-	PostgreSQLVersion string
-	RedisVersion      string
-	TemporalVersion   string
-	TemporalUIVersion string
-	MastraUrl         string
-
-	// CORS specific fields
-	CORSAllowOrigins     []string
-	CORSAllowMethods     []string
-	CORSAllowHeaders     []string
-	CORSAllowCredentials bool
-	CORSMaxAge           int
+	// CORS Configuration
+	CORSAllowOrigins     []string `env:"CORS_ALLOW_ORIGINS" envSeparator:"," envDefault:"*"`
+	CORSAllowMethods     []string `env:"CORS_ALLOW_METHODS" envSeparator:"," envDefault:"GET,POST,PUT,PATCH,DELETE,HEAD,OPTIONS"`
+	CORSAllowHeaders     []string `env:"CORS_ALLOW_HEADERS" envSeparator:"," envDefault:"Origin,Content-Length,Content-Type,Authorization"`
+	CORSAllowCredentials bool     `env:"CORS_ALLOW_CREDENTIALS" envDefault:"true"`
+	CORSMaxAge           int      `env:"CORS_MAX_AGE" envDefault:"43200"` // 12 hours in seconds
 }
 
+// NewAppConfig creates and loads application configuration
 func NewAppConfig() *AppConfig {
 	cfg, err := loadConfig()
 	if err != nil {
-		log.Fatal(err.Error())
+		log.Fatalf("Failed to load configuration: %v", err)
 	}
 	return cfg
 }
 
+// loadConfig loads configuration from environment variables
 func loadConfig() (*AppConfig, error) {
-	err := godotenv.Load(".env")
-	if err != nil {
-		log.Println("No .env file found, relying on environment variables")
+	// Load .env file if it exists (optional)
+	if err := godotenv.Load(".env"); err != nil {
+		log.Println("No .env file found, using environment variables only")
 	}
 
-	cfg := &AppConfig{
-		AppName:             getEnv("APP_NAME", ""),
-		AppEnvironment:      getEnv("APP_APP_ENVIRONMENT", "development"),
-		AppDebug:            getEnvBool("APP_APP_DEBUG", false),
-		ServerHost:          getEnv("APP_SERVER_HOST", "0.0.0.0"),
-		ServerPort:          getEnvInt("APP_SERVER_PORT", 8081),
-		ClerkSecret:         getEnv("CLERK_SECRET", ""),
-		JWTSecret:           getEnv("APP_JWT_SECRET", ""),
-		JWTTTL:              getEnvInt("APP_JWT_TTL", 8640),
-		DatabaseHost:        getEnv("APP_DATABASE_HOST", "localhost"),
-		DatabasePort:        getEnvInt("APP_DATABASE_PORT", 5432),
-		DatabaseUsername:    getEnv("APP_DATABASE_USERNAME", ""),
-		DatabasePassword:    getEnv("APP_DATABASE_PASSWORD", ""),
-		DatabaseName:        getEnv("APP_DATABASE_NAME", ""),
-		DatabaseSSLMode:     getEnv("APP_DATABASE_SSL_MODE", "disable"),
-		DatabaseURL:         getEnv("DATABASE_URL", ""),
-		RedisHost:           getEnv("APP_REDIS_HOST", "localhost"),
-		RedisPort:           getEnvInt("APP_REDIS_PORT", 6379),
-		RedisPassword:       getEnv("APP_REDIS_PASSWORD", ""),
-		RedisDB:             getEnvInt("APP_REDIS_DB", 0),
-		TemporalHostPort:    getEnv("APP_TEMPORAL_HOSTPORT", "localhost:7233"),
-		TemporalNamespace:   getEnv("APP_TEMPORAL_NAMESPACE", "default"),
-		TemporalTLS:         getEnvBool("APP_TEMPORAL_TLS", false),
-		SvixSecret:          getEnv("APP_SVIX_SECRET", ""),
-		SvixAppID:           getEnv("APP_SVIX_APP_ID", ""),
-		CoreAPIGRPCEndpoint: getEnv("APP_CORE_API_GRPC_ENDPOINT", ""),
-		PostgreSQLVersion:   getEnv("POSTGRESQL_VERSION", ""),
-		RedisVersion:        getEnv("REDIS_VERSION", ""),
-		TemporalVersion:     getEnv("TEMPORAL_VERSION", ""),
-		TemporalUIVersion:   getEnv("TEMPORAL_UI_VERSION", ""),
-		MastraUrl:           getEnv("MASTRA_URL", ""),
+	cfg := &AppConfig{}
 
-		// CORS Configuration
-		CORSAllowOrigins:     getEnvSlice("CORS_ALLOW_ORIGINS", []string{"*"}, ","),
-		CORSAllowMethods:     getEnvSlice("CORS_ALLOW_METHODS", []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"}, ","),
-		CORSAllowHeaders:     getEnvSlice("CORS_ALLOW_HEADERS", []string{"Origin", "Content-Length", "Content-Type", "Authorization"}, ","),
-		CORSAllowCredentials: getEnvBool("CORS_ALLOW_CREDENTIALS", true),
-		CORSMaxAge:           getEnvInt("CORS_MAX_AGE", 12*60*60), // 12 hours in seconds
+	// Parse environment variables into struct
+	if err := env.Parse(cfg); err != nil {
+		return nil, err
 	}
 
 	return cfg, nil
 }
 
-func getEnv(key, defaultValue string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
-	}
-	return defaultValue
+// Validate performs validation on the configuration
+func (c *AppConfig) Validate() error {
+	// Add custom validation logic here
+	// Example:
+	// if c.JWTSecret == "" {
+	//     return fmt.Errorf("JWT_SECRET is required")
+	// }
+	return nil
 }
 
-func getEnvInt(key string, defaultValue int) int {
-	if value := os.Getenv(key); value != "" {
-		var intValue int
-		if _, err := fmt.Sscanf(value, "%d", &intValue); err == nil {
-			return intValue
-		}
-	}
-	return defaultValue
+// IsDevelopment checks if the app is running in development mode
+func (c *AppConfig) IsDevelopment() bool {
+	return c.AppEnvironment == "development"
 }
 
-func getEnvBool(key string, defaultValue bool) bool {
-	if value := os.Getenv(key); value != "" {
-		return value == "true" || value == "1" || value == "TRUE"
-	}
-	return defaultValue
+// IsProduction checks if the app is running in production mode
+func (c *AppConfig) IsProduction() bool {
+	return c.AppEnvironment == "production"
 }
 
-// getEnvSlice parses environment variable as a slice of strings
-func getEnvSlice(key string, defaultValue []string, separator string) []string {
-	if value := os.Getenv(key); value != "" {
-		return strings.Split(value, separator)
+// GetDatabaseDSN returns the PostgreSQL connection string
+func (c *AppConfig) GetDatabaseDSN() string {
+	if c.DatabaseURL != "" {
+		return c.DatabaseURL
 	}
-	return defaultValue
+	return fmt.Sprintf(
+		"host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
+		c.DatabaseHost,
+		c.DatabasePort,
+		c.DatabaseUsername,
+		c.DatabasePassword,
+		c.DatabaseName,
+		c.DatabaseSSLMode,
+	)
+}
+
+// GetRedisAddr returns the Redis connection address
+func (c *AppConfig) GetRedisAddr() string {
+	return fmt.Sprintf("%s:%d", c.RedisHost, c.RedisPort)
 }

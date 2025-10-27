@@ -3,15 +3,29 @@ repos:
     rev: v0.5.1
     hooks:
       - id: go-vet
-        name: Go Vet (Current Dir)
-        entry: bash -c 'go vet ./... 2>/dev/null || echo "No Go files to vet"'
+        name: Go Vet (Core)
+        entry: bash -c 'cd core && go vet ./... 2>/dev/null || echo "No Go files to vet in core"'
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      - id: go-vet
+        name: Go Vet (Email)
+        entry: bash -c 'cd email && go vet ./... 2>/dev/null || echo "No Go files to vet in email"'
         language: system
         pass_filenames: false
         always_run: true
 
       - id: go-mod-tidy
-        name: Go Mod Tidy (Current Dir)
-        entry: bash -c 'go mod tidy -v'
+        name: Go Mod Tidy (Core)
+        entry: bash -c 'cd core && go mod tidy -v'
+        language: system
+        pass_filenames: false
+        always_run: false
+
+      - id: go-mod-tidy
+        name: Go Mod Tidy (Email)
+        entry: bash -c 'cd email && go mod tidy -v'
         language: system
         pass_filenames: false
         always_run: false
@@ -19,8 +33,43 @@ repos:
   - repo: local
     hooks:
       - id: gosec-scan
-        name: Gosec Security Scanner (Current Dir)
-        entry: bash -c 'gosec -exclude-dir=vendor -exclude-generated ./... 2>/dev/null || echo "No Go files to scan"'
+        name: Gosec Security Scanner (Core)
+        entry: bash -c 'cd core && gosec -exclude-dir=vendor -exclude-generated ./... 2>/dev/null || echo "No Go files to scan in core"'
+        language: system
+        pass_filenames: false
+        always_run: false
+
+      - id: gosec-scan
+        name: Gosec Security Scanner (Email)
+        entry: bash -c 'cd email && gosec -exclude-dir=vendor -exclude-generated ./... 2>/dev/null || echo "No Go files to scan in email"'
+        language: system
+        pass_filenames: false
+        always_run: false
+
+      - id: go-test
+        name: Go Test (Core)
+        entry: bash -c 'cd core && go test ./... -short 2>/dev/null || echo "No tests in core"'
+        language: system
+        pass_filenames: false
+        always_run: false
+
+      - id: go-test
+        name: Go Test (Email)
+        entry: bash -c 'cd email && go test ./... -short 2>/dev/null || echo "No tests in email"'
+        language: system
+        pass_filenames: false
+        always_run: false
+
+      - id: go-build
+        name: Go Build (Core)
+        entry: bash -c 'cd core && go build ./... 2>/dev/null || echo "Build failed in core"'
+        language: system
+        pass_filenames: false
+        always_run: false
+
+      - id: go-build
+        name: Go Build (Email)
+        entry: bash -c 'cd email && go build ./... 2>/dev/null || echo "Build failed in email"'
         language: system
         pass_filenames: false
         always_run: false

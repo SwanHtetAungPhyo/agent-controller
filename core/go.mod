@@ -3,7 +3,9 @@ module stock-agent.io
 go 1.25.1
 
 require (
+	github.com/caarlos0/env/v6 v6.10.1
 	github.com/clerk/clerk-sdk-go/v2 v2.4.2
+	github.com/gin-contrib/cors v1.7.6
 	github.com/gin-gonic/gin v1.11.0
 	github.com/go-jose/go-jose/v3 v3.0.4
 	github.com/go-resty/resty/v2 v2.16.5
@@ -40,7 +42,6 @@ require (
 	github.com/facebookgo/clock v0.0.0-20150410010913-600d898af40a // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.9 // indirect
-	github.com/gin-contrib/cors v1.7.6 // indirect
 	github.com/gin-contrib/sse v1.1.0 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
