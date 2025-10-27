@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: core
+  labels:
+    app: core
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: core
+  template:
+    metadata:
+      name: core
+      labels:
+        app: core
+    spec:
+      containers:
+        - name: core
+          image: core-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          readinessProbe:
+            httpGet:
+              port: 8080
+              path: /health
+            initialDelaySeconds: 5
+            periodSeconds: 10
+      restartPolicy: Always
+      

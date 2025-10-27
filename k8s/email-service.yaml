@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: email
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: email
+  template:
+    metadata:
+      labels:
+        app: email
+    spec:
+      containers:
+        - name: email
+          image: email-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8081
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8081
+            initialDelaySeconds: 5
+            periodSeconds: 10
