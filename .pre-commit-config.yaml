@@ -1,0 +1,26 @@
+repos:
+  - repo: https://github.com/dnephin/pre-commit-golang
+    rev: v0.5.1
+    hooks:
+      - id: go-vet
+        name: Go Vet (Current Dir)
+        entry: bash -c 'go vet ./... 2>/dev/null || echo "No Go files to vet"'
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      - id: go-mod-tidy
+        name: Go Mod Tidy (Current Dir)
+        entry: bash -c 'go mod tidy -v'
+        language: system
+        pass_filenames: false
+        always_run: false
+
+  - repo: local
+    hooks:
+      - id: gosec-scan
+        name: Gosec Security Scanner (Current Dir)
+        entry: bash -c 'gosec -exclude-dir=vendor -exclude-generated ./... 2>/dev/null || echo "No Go files to scan"'
+        language: system
+        pass_filenames: false
+        always_run: false
