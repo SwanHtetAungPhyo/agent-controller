@@ -17,7 +17,7 @@ func (s *HttpServer) temporalWorkerSetup() {
 		"default",
 	)
 
-	s.worker.RegisterWorkflow(s.workflowManager.StockSummeryWorkflow)
+	// s.worker.RegisterWorkflow(s.workflowManager.StockSummeryWorkflow)
 
 }
 func (s *HttpServer) activityManagerSetup() {

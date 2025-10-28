@@ -22,7 +22,7 @@ WORKDIR /app
 
 COPY --from=builder /app/main .
 
-EXPOSE 8081
+EXPOSE 8082
 
 LABEL maintainer="kanios.it.com"
 LABEL version="VERSION-1.10"

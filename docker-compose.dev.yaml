@@ -1,0 +1,138 @@
+version: '3.8'
+
+services:
+  # Core API Service
+  core-api:
+    build:
+      context: core
+      dockerfile: Dockerfile
+    container_name: kainos-core-api
+    depends_on:
+      - postgresql
+      - redis
+      - nats
+    environment:
+      - APP_NAME=kainos-first-service
+      - APP_APP_ENVIRONMENT=development
+      - APP_APP_DEBUG=true
+      - APP_SERVER_HOST=0.0.0.0
+      - APP_SERVER_PORT=8081
+      - APP_DATABASE_HOST=postgresql
+      - APP_DATABASE_PORT=5432
+      - APP_DATABASE_NAME=kainos
+      - APP_DATABASE_USERNAME=kainos
+      - APP_DATABASE_PASSWORD=password
+      - APP_DATABASE_SSL_MODE=disable
+      - APP_REDIS_HOST=redis
+      - APP_REDIS_PORT=6379
+      - APP_REDIS_PASSWORD=redispass
+      - APP_REDIS_DB=0
+      - APP_JWT_SECRET=jwt-secret-here
+      - APP_JWT_TTL=8640
+      - CLERK_SECRET=clerk-secret-here
+      - APP_SVIX_SECRET=svix-secret
+      - APP_SVIX_APP_ID=svix-app-id
+    networks:
+      - kainos-network
+    ports:
+      - "8081:8081"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8081/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Email Service
+  email-service:
+    build:
+      context: email
+      dockerfile: Dockerfile
+    container_name: kainos-email-service
+    depends_on:
+      - nats
+    environment:
+      - NATS_URL=nats://nats:4222
+      - TOPIC=email-notifications
+      - EMAIL=your-email@example.com
+      - EMAIL_PASSWORD=emailpass
+    networks:
+      - kainos-network
+    ports:
+      - "8082:8082"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8082/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # PostgreSQL Database
+  postgresql:
+    container_name: kainos-postgresql
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: kainos
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: kainos
+    networks:
+      - kainos-network
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./core/db/migrations:/docker-entrypoint-initdb.d
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kainos -d kainos"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Redis Cache
+  redis:
+    container_name: kainos-redis
+    image: redis:7.2-alpine
+    command: >
+      redis-server --appendonly yes --requirepass redispass
+    networks:
+      - kainos-network
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # NATS Message Broker
+  nats:
+    container_name: kainos-nats
+    image: nats:2.10-alpine
+    command: ["-js", "-m", "8222"]
+    networks:
+      - kainos-network
+    ports:
+      - "4222:4222"  # Client connections
+      - "8222:8222"  # HTTP monitoring
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8222/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  kainos-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
+    driver: local
+  redis-data:
+    driver: local

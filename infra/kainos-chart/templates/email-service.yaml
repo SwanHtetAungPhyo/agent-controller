@@ -1,0 +1,80 @@
+{{- if .Values.emailService.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "kainos.fullname" . }}-email-service-config
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "kainos.labels" . | nindent 4 }}
+    app.kubernetes.io/component: email-service
+data:
+  NAT_URL: {{ .Values.emailService.env.natsUrl | quote }}
+  TOPIC: {{ .Values.emailService.env.topic | quote }}
+  EMAIL: {{ .Values.emailService.env.email | quote }}
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "kainos.fullname" . }}-email-service
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "kainos.labels" . | nindent 4 }}
+    app.kubernetes.io/component: email-service
+spec:
+  replicas: {{ .Values.emailService.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "kainos.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: email-service
+  template:
+    metadata:
+      labels:
+        {{- include "kainos.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: email-service
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        fsGroup: 65532
+      containers:
+        - name: email-service
+          image: "{{ .Values.images.emailService.repository }}:{{ .Values.images.emailService.tag }}"
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.emailService.port }}
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: {{ include "kainos.fullname" . }}-email-service-config
+          env:
+            - name: EMAIL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "kainos.fullname" . }}-secrets
+                  key: email-password
+          resources:
+            {{- toYaml .Values.emailService.resources | nindent 12 }}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "kainos.fullname" . }}-email-service
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "kainos.labels" . | nindent 4 }}
+    app.kubernetes.io/component: email-service
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: 80
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "kainos.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: email-service
+{{- end }}

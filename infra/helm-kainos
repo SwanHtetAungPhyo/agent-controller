@@ -1,0 +1,236 @@
+#!/bin/bash
+
+# Kainos Helm Management Script
+# Usage: ./helm-kainos [command]
+
+set -e
+
+RELEASE_NAME="kainos"
+NAMESPACE="kainos"
+CHART_PATH="./kainos-chart"
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Helper functions
+log_info() { echo -e "${BLUE}ℹ️  $1${NC}"; }
+log_success() { echo -e "${GREEN}✅ $1${NC}"; }
+log_warning() { echo -e "${YELLOW}⚠️  $1${NC}"; }
+log_error() { echo -e "${RED}❌ $1${NC}"; }
+
+# Check if helm is available
+check_helm() {
+    if ! command -v helm &> /dev/null; then
+        log_error "Helm is not installed or not in PATH"
+        log_info "Install with: brew install helm"
+        exit 1
+    fi
+}
+
+# Check if kind cluster exists
+check_cluster() {
+    if ! kubectl cluster-info --context kind-kainos-cluster &> /dev/null; then
+        log_error "Kind cluster 'kainos-cluster' is not running"
+        log_info "Run: kind create cluster --name kainos-cluster"
+        exit 1
+    fi
+}
+
+# Build and load Docker images
+build_images() {
+    log_info "Building Docker images..."
+    
+    log_info "Building core-service..."
+    docker build -t core-service:latest ./core
+    
+    log_info "Building email-service..."
+    docker build -t email-service:latest ./email
+    
+    log_info "Loading images into kind cluster..."
+    kind load docker-image core-service:latest --name kainos-cluster
+    kind load docker-image email-service:latest --name kainos-cluster
+    
+    log_success "Images built and loaded successfully"
+}
+
+# Install/upgrade the Helm chart
+deploy() {
+    check_helm
+    check_cluster
+    build_images
+    
+    log_info "Deploying Kainos with Helm..."
+    
+    # Create namespace if it doesn't exist
+    kubectl create namespace $NAMESPACE --dry-run=client -o yaml | kubectl apply -f -
+    
+    # Install or upgrade the chart
+    helm upgrade --install $RELEASE_NAME $CHART_PATH \
+        --namespace $NAMESPACE \
+        --wait \
+        --timeout 10m
+    
+    log_success "Deployment completed!"
+    status
+}
+
+# Show status
+status() {
+    log_info "Kainos Application Status"
+    echo "=========================="
+    helm status $RELEASE_NAME -n $NAMESPACE
+    echo ""
+    kubectl get pods -n $NAMESPACE
+    echo ""
+    kubectl get services -n $NAMESPACE
+}
+
+# Show logs
+logs() {
+    local component=${1:-"core-api"}
+    log_info "Following logs for $component..."
+    kubectl logs -f deployment/$RELEASE_NAME-$component -n $NAMESPACE --timestamps=true
+}
+
+# Port forward services
+port_forward() {
+    local service=${1:-"core-api"}
+    case $service in
+        "core"|"core-api")
+            log_info "Port forwarding Core API to localhost:8081"
+            log_info "Press Ctrl+C to stop port forwarding"
+            log_info "Test with: curl http://localhost:8081/healthz"
+            kubectl port-forward service/$RELEASE_NAME-core-api 8081:80 -n $NAMESPACE
+            ;;
+        "nats")
+            log_info "Port forwarding NATS monitoring to localhost:8222"
+            log_info "Press Ctrl+C to stop port forwarding"
+            log_info "Visit: http://localhost:8222"
+            kubectl port-forward service/$RELEASE_NAME-nats 8222:8222 -n $NAMESPACE
+            ;;
+        "postgres")
+            log_info "Port forwarding PostgreSQL to localhost:5432"
+            log_info "Press Ctrl+C to stop port forwarding"
+            log_info "Connect with: psql -h localhost -p 5432 -U kainos -d kainos"
+            kubectl port-forward service/$RELEASE_NAME-postgres 5432:5432 -n $NAMESPACE
+            ;;
+        "redis")
+            log_info "Port forwarding Redis to localhost:6379"
+            log_info "Press Ctrl+C to stop port forwarding"
+            log_info "Connect with: redis-cli -h localhost -p 6379 -a redispass"
+            kubectl port-forward service/$RELEASE_NAME-redis 6379:6379 -n $NAMESPACE
+            ;;
+        "temporal")
+            log_info "Port forwarding Temporal to localhost:7233"
+            log_info "Press Ctrl+C to stop port forwarding"
+            kubectl port-forward service/$RELEASE_NAME-temporal 7233:7233 -n $NAMESPACE
+            ;;
+        *)
+            log_error "Unknown service: $service"
+            log_info "Available services: core, nats, postgres, redis, temporal"
+            exit 1
+            ;;
+    esac
+}
+
+# Uninstall the chart
+cleanup() {
+    log_warning "Uninstalling Kainos Helm release..."
+    helm uninstall $RELEASE_NAME -n $NAMESPACE
+    kubectl delete namespace $NAMESPACE --ignore-not-found=true
+    log_success "Cleanup completed"
+}
+
+# Template the chart (dry-run)
+template() {
+    log_info "Templating Kainos chart..."
+    helm template $RELEASE_NAME $CHART_PATH --namespace $NAMESPACE
+}
+
+# Validate the chart
+validate() {
+    log_info "Validating Kainos chart..."
+    helm lint $CHART_PATH
+    log_success "Chart validation passed"
+}
+
+# Show values
+values() {
+    log_info "Current Helm values:"
+    helm get values $RELEASE_NAME -n $NAMESPACE
+}
+
+# Show help
+help() {
+    echo "Kainos Helm Management Script"
+    echo ""
+    echo "Usage: ./helm-kainos [command]"
+    echo ""
+    echo "Commands:"
+    echo "  deploy          - Build images and deploy with Helm"
+    echo "  status          - Show deployment status"
+    echo "  logs [service]  - Follow logs for a service (default: core-api)"
+    echo "  port [service]  - Port forward a service (default: core-api)"
+    echo "  cleanup         - Uninstall the Helm release"
+    echo "  template        - Show templated YAML (dry-run)"
+    echo "  validate        - Validate the Helm chart"
+    echo "  values          - Show current Helm values"
+    echo "  help            - Show this help"
+    echo ""
+    echo "Examples:"
+    echo "  ./helm-kainos deploy"
+    echo "  ./helm-kainos logs core-api"
+    echo "  ./helm-kainos port nats"
+    echo "  ./helm-kainos status"
+    echo ""
+    echo "Helm-specific commands:"
+    echo "  helm upgrade kainos ./kainos-chart -n kainos"
+    echo "  helm rollback kainos 1 -n kainos"
+    echo "  helm history kainos -n kainos"
+}
+
+# Main command handling
+case "${1:-help}" in
+    "deploy")
+        deploy
+        ;;
+    "status")
+        check_helm
+        check_cluster
+        status
+        ;;
+    "logs")
+        check_helm
+        check_cluster
+        logs $2
+        ;;
+    "port")
+        check_helm
+        check_cluster
+        port_forward $2
+        ;;
+    "cleanup")
+        check_helm
+        cleanup
+        ;;
+    "template")
+        check_helm
+        template
+        ;;
+    "validate")
+        check_helm
+        validate
+        ;;
+    "values")
+        check_helm
+        check_cluster
+        values
+        ;;
+    "help"|*)
+        help
+        ;;
+esac

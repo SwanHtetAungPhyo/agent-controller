@@ -1,0 +1,147 @@
+{{- if .Values.coreApi.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "kainos.fullname" . }}-core-api-config
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "kainos.labels" . | nindent 4 }}
+    app.kubernetes.io/component: core-api
+data:
+  APP_NAME: {{ .Values.coreApi.env.appName | quote }}
+  APP_APP_ENVIRONMENT: {{ .Values.coreApi.env.appEnvironment | quote }}
+  APP_APP_DEBUG: {{ .Values.coreApi.env.appDebug | quote }}
+  APP_SERVER_HOST: {{ .Values.coreApi.env.serverHost | quote }}
+  APP_SERVER_PORT: {{ .Values.coreApi.port | quote }}
+  APP_JWT_TTL: {{ .Values.coreApi.env.jwtTtl | quote }}
+  APP_DATABASE_HOST: {{ .Values.coreApi.database.host | quote }}
+  APP_DATABASE_PORT: {{ .Values.coreApi.database.port | quote }}
+  APP_DATABASE_NAME: {{ .Values.coreApi.database.name | quote }}
+  APP_DATABASE_SSL_MODE: {{ .Values.coreApi.database.sslMode | quote }}
+  APP_REDIS_HOST: {{ .Values.coreApi.redis.host | quote }}
+  APP_REDIS_PORT: {{ .Values.coreApi.redis.port | quote }}
+  APP_REDIS_DB: {{ .Values.coreApi.redis.db | quote }}
+  APP_TEMPORAL_HOSTPORT: {{ .Values.coreApi.temporal.hostPort | quote }}
+  APP_TEMPORAL_NAMESPACE: {{ .Values.coreApi.temporal.namespace | quote }}
+  APP_TEMPORAL_TLS: {{ .Values.coreApi.temporal.tls | quote }}
+  CORS_ALLOW_ORIGINS: {{ .Values.coreApi.cors.allowOrigins | quote }}
+  CORS_ALLOW_METHODS: {{ .Values.coreApi.cors.allowMethods | quote }}
+  CORS_ALLOW_HEADERS: {{ .Values.coreApi.cors.allowHeaders | quote }}
+  CORS_ALLOW_CREDENTIALS: {{ .Values.coreApi.cors.allowCredentials | quote }}
+  CORS_MAX_AGE: {{ .Values.coreApi.cors.maxAge | quote }}
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "kainos.fullname" . }}-core-api
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "kainos.labels" . | nindent 4 }}
+    app.kubernetes.io/component: core-api
+spec:
+  replicas: {{ .Values.coreApi.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "kainos.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: core-api
+  template:
+    metadata:
+      labels:
+        {{- include "kainos.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: core-api
+    spec:
+      securityContext:
+        runAsUser: 0
+        fsGroup: 0
+      containers:
+        - name: core-api
+          image: "{{ .Values.images.coreApi.repository }}:{{ .Values.images.coreApi.tag }}"
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.coreApi.port }}
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: {{ include "kainos.fullname" . }}-core-api-config
+          env:
+            - name: CLERK_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "kainos.fullname" . }}-secrets
+                  key: clerk-secret
+            - name: APP_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "kainos.fullname" . }}-secrets
+                  key: jwt-secret
+            - name: APP_DATABASE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "kainos.fullname" . }}-secrets
+                  key: db-username
+            - name: APP_DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "kainos.fullname" . }}-secrets
+                  key: db-password
+            - name: APP_REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "kainos.fullname" . }}-secrets
+                  key: redis-password
+            - name: APP_SVIX_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "kainos.fullname" . }}-secrets
+                  key: svix-secret
+            - name: APP_SVIX_APP_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "kainos.fullname" . }}-secrets
+                  key: svix-app-id
+            - name: DATABASE_URL
+              value: "postgres://kainos:password@{{ .Values.coreApi.database.host }}:{{ .Values.coreApi.database.port }}/{{ .Values.coreApi.database.name }}?sslmode={{ .Values.coreApi.database.sslMode }}"
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.coreApi.resources | nindent 12 }}
+          volumeMounts:
+            - name: log-volume
+              mountPath: /tmp/logs
+      volumes:
+        - name: log-volume
+          emptyDir: {}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "kainos.fullname" . }}-core-api
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "kainos.labels" . | nindent 4 }}
+    app.kubernetes.io/component: core-api
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: 80
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "kainos.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: core-api
+{{- end }}

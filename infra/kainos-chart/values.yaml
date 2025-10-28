@@ -1,0 +1,165 @@
+# Kainos Application Configuration
+
+# Global settings
+global:
+  namespace: kainos
+  imageRegistry: ""
+  imagePullPolicy: Never  # For local development with kind
+
+# Application images
+images:
+  coreApi:
+    repository: core-service
+    tag: latest
+  emailService:
+    repository: email-service
+    tag: latest
+
+# Core API configuration
+coreApi:
+  enabled: true
+  replicaCount: 2
+  port: 8081
+  
+  # Environment variables
+  env:
+    appName: "kainos-first-service"
+    appEnvironment: "production"
+    appDebug: false
+    serverHost: "0.0.0.0"
+    jwtTtl: "8640"
+    
+  # Database configuration
+  database:
+    host: postgres
+    port: 5432
+    name: kainos
+    sslMode: disable
+    
+  # Redis configuration  
+  redis:
+    host: redis
+    port: 6379
+    db: 0
+    
+  # Temporal configuration
+  temporal:
+    hostPort: "temporal:7233"
+    namespace: default
+    tls: false
+    
+  # CORS configuration
+  cors:
+    allowOrigins: "*"
+    allowMethods: "GET,POST,PUT,PATCH,DELETE,HEAD,OPTIONS"
+    allowHeaders: "Origin,Content-Length,Content-Type,Authorization"
+    allowCredentials: true
+    maxAge: 43200
+
+  # Resource limits
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "250m"
+    limits:
+      memory: "1Gi"
+      cpu: "1000m"
+
+# Email Service configuration
+emailService:
+  enabled: true
+  replicaCount: 2
+  port: 8082
+  
+  env:
+    natsUrl: "nats://nats:4222"
+    topic: "email-notifications"
+    email: "your-email@example.com"
+    
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "250m"
+    limits:
+      memory: "1Gi"
+      cpu: "1000m"
+
+# Infrastructure services
+infrastructure:
+  # PostgreSQL
+  postgres:
+    enabled: true
+    image: postgres:15-alpine
+    port: 5432
+    storage: 2Gi
+    resources:
+      requests:
+        memory: "256Mi"
+        cpu: "250m"
+      limits:
+        memory: "1Gi"
+        cpu: "1000m"
+        
+  # Redis
+  redis:
+    enabled: true
+    image: redis:7.2-alpine
+    port: 6379
+    storage: 1Gi
+    resources:
+      requests:
+        memory: "128Mi"
+        cpu: "100m"
+      limits:
+        memory: "512Mi"
+        cpu: "500m"
+        
+  # NATS
+  nats:
+    enabled: true
+    image: nats:2.10-alpine
+    clientPort: 4222
+    monitoringPort: 8222
+    resources:
+      requests:
+        memory: "128Mi"
+        cpu: "100m"
+      limits:
+        memory: "512Mi"
+        cpu: "500m"
+        
+  # Temporal
+  temporal:
+    enabled: true
+    image: temporalio/auto-setup:1.22.0
+    port: 7233
+    resources:
+      requests:
+        memory: "512Mi"
+        cpu: "500m"
+      limits:
+        memory: "2Gi"
+        cpu: "2000m"
+
+# Secrets (base64 encoded)
+secrets:
+  clerkSecret: "Y2xlcmstc2VjcmV0LWhlcmU="  # clerk-secret-here
+  jwtSecret: "and0LXNlY3JldC1oZXJl"  # jwt-secret-here
+  dbUsername: "a2Fpbm9z"  # kainos
+  dbPassword: "cGFzc3dvcmQ="  # password
+  redisPassword: "cmVkaXNwYXNz"  # redispass
+  svixSecret: "c3ZpeC1zZWNyZXQ="  # svix-secret
+  svixAppId: "c3ZpeC1hcHAtaWQ="  # svix-app-id
+  emailPassword: "ZW1haWxwYXNz"  # emailpass
+
+# Service configuration
+service:
+  type: ClusterIP
+  
+# Ingress (disabled by default)
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts: []
+  tls: []

@@ -1,0 +1,249 @@
+# Kainos Application - All-in-One Manifest
+# Usage: kubectl apply -f app.yaml
+
+---
+# Namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kainos
+
+---
+# Secrets
+apiVersion: v1
+kind: Secret
+metadata:
+  name: app-secrets
+  namespace: kainos
+type: Opaque
+data:
+  # Base64 encoded values - replace with your actual secrets
+  clerk-secret: Y2xlcmstc2VjcmV0LWhlcmU=  # clerk-secret-here
+  jwt-secret: and0LXNlY3JldC1oZXJl  # jwt-secret-here
+  db-username: a2Fpbm9z  # kainos
+  db-password: cGFzc3dvcmQ=  # password
+  redis-password: cmVkaXNwYXNz  # redispass
+  svix-secret: c3ZpeC1zZWNyZXQ=  # svix-secret
+  svix-app-id: c3ZpeC1hcHAtaWQ=  # svix-app-id
+  email-password: ZW1haWxwYXNz  # emailpass
+
+---
+# Core API ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: core-api-config
+  namespace: kainos
+data:
+  APP_NAME: "kainos-first-service"
+  APP_APP_ENVIRONMENT: "production"
+  APP_APP_DEBUG: "false"
+  APP_SERVER_HOST: "0.0.0.0"
+  APP_SERVER_PORT: "8081"
+  APP_JWT_TTL: "8640"
+  APP_DATABASE_HOST: "postgres"
+  APP_DATABASE_PORT: "5432"
+  APP_DATABASE_NAME: "kainos"
+  APP_DATABASE_SSL_MODE: "disable"
+  APP_REDIS_HOST: "redis"
+  APP_REDIS_PORT: "6379"
+  APP_REDIS_DB: "0"
+  APP_TEMPORAL_HOSTPORT: "temporal:7233"
+  APP_TEMPORAL_NAMESPACE: "default"
+  APP_TEMPORAL_TLS: "false"
+  CORS_ALLOW_ORIGINS: "*"
+  CORS_ALLOW_METHODS: "GET,POST,PUT,PATCH,DELETE,HEAD,OPTIONS"
+  CORS_ALLOW_HEADERS: "Origin,Content-Length,Content-Type,Authorization"
+  CORS_ALLOW_CREDENTIALS: "true"
+  CORS_MAX_AGE: "43200"
+
+---
+# Email Service ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: email-service-config
+  namespace: kainos
+data:
+  NAT_URL: "nats://nats:4222"
+  TOPIC: "email-notifications"
+  EMAIL: "your-email@example.com"
+
+---
+# Core API Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: core-api
+  namespace: kainos
+  labels:
+    app: first-service
+    version: "1.0"
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: first-service
+  template:
+    metadata:
+      labels:
+        app: first-service
+        version: "1.0"
+    spec:
+      securityContext:
+        runAsUser: 0
+        fsGroup: 0
+      containers:
+        - name: core-api
+          image: core-service:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8081
+              name: http
+          envFrom:
+            - configMapRef:
+                name: core-api-config
+          env:
+            - name: CLERK_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: clerk-secret
+            - name: APP_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: jwt-secret
+            - name: APP_DATABASE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: db-username
+            - name: APP_DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: db-password
+            - name: APP_REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: redis-password
+            - name: APP_SVIX_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: svix-secret
+            - name: APP_SVIX_APP_ID
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: svix-app-id
+            - name: DATABASE_URL
+              value: "postgres://kainos:password@postgres:5432/kainos?sslmode=disable"
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8081
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8081
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+          volumeMounts:
+            - name: log-volume
+              mountPath: /tmp/logs
+      volumes:
+        - name: log-volume
+          emptyDir: {}
+
+---
+# Core API Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: core-api
+  namespace: kainos
+spec:
+  selector:
+    app: first-service
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8081
+  type: ClusterIP
+
+---
+# Email Service Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: email-service
+  namespace: kainos
+  labels:
+    app: email-service
+    version: "1.0"
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: email-service
+  template:
+    metadata:
+      labels:
+        app: email-service
+        version: "1.0"
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        fsGroup: 65532
+      containers:
+        - name: email-service
+          image: email-service:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8082
+              name: http
+          envFrom:
+            - configMapRef:
+                name: email-service-config
+          env:
+            - name: EMAIL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: email-password
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+
+---
+# Email Service Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: email-service
+  namespace: kainos
+spec:
+  selector:
+    app: email-service
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8082
+  type: ClusterIP

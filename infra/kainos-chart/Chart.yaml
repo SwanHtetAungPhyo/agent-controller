@@ -1,0 +1,25 @@
+apiVersion: v2
+name: kainos-chart
+description: A Helm chart for Kainos application stack with Core API, Email Service, and infrastructure
+
+type: application
+
+version: 0.1.0
+
+appVersion: "1.0.0"
+
+keywords:
+  - kainos
+  - microservices
+  - golang
+  - nats
+  - temporal
+  - redis
+  - postgresql
+
+maintainers:
+  - name: Kainos Team
+    email: team@kainos.com
+
+sources:
+  - https://github.com/your-org/kainos

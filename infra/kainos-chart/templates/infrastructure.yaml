@@ -1,0 +1,307 @@
+{{- if .Values.infrastructure.postgres.enabled }}
+---
+# PostgreSQL
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "kainos.fullname" . }}-postgres-pvc
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "kainos.labels" . | nindent 4 }}
+    app.kubernetes.io/component: postgres
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.infrastructure.postgres.storage }}
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "kainos.fullname" . }}-postgres
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "kainos.labels" . | nindent 4 }}
+    app.kubernetes.io/component: postgres
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "kainos.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: postgres
+  template:
+    metadata:
+      labels:
+        {{- include "kainos.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: {{ .Values.infrastructure.postgres.image }}
+          ports:
+            - name: postgres
+              containerPort: {{ .Values.infrastructure.postgres.port }}
+          env:
+            - name: POSTGRES_DB
+              value: {{ .Values.coreApi.database.name | quote }}
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "kainos.fullname" . }}-secrets
+                  key: db-username
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "kainos.fullname" . }}-secrets
+                  key: db-password
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          resources:
+            {{- toYaml .Values.infrastructure.postgres.resources | nindent 12 }}
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+      volumes:
+        - name: postgres-data
+          persistentVolumeClaim:
+            claimName: {{ include "kainos.fullname" . }}-postgres-pvc
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "kainos.fullname" . }}-postgres
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "kainos.labels" . | nindent 4 }}
+    app.kubernetes.io/component: postgres
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.infrastructure.postgres.port }}
+      targetPort: postgres
+      protocol: TCP
+      name: postgres
+  selector:
+    {{- include "kainos.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: postgres
+{{- end }}
+
+{{- if .Values.infrastructure.redis.enabled }}
+---
+# Redis
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "kainos.fullname" . }}-redis-pvc
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "kainos.labels" . | nindent 4 }}
+    app.kubernetes.io/component: redis
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.infrastructure.redis.storage }}
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "kainos.fullname" . }}-redis
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "kainos.labels" . | nindent 4 }}
+    app.kubernetes.io/component: redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "kainos.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: redis
+  template:
+    metadata:
+      labels:
+        {{- include "kainos.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: redis
+    spec:
+      containers:
+        - name: redis
+          image: {{ .Values.infrastructure.redis.image }}
+          ports:
+            - name: redis
+              containerPort: {{ .Values.infrastructure.redis.port }}
+          args:
+            - "redis-server"
+            - "--appendonly"
+            - "yes"
+            - "--requirepass"
+            - "$(REDIS_PASSWORD)"
+          env:
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "kainos.fullname" . }}-secrets
+                  key: redis-password
+          resources:
+            {{- toYaml .Values.infrastructure.redis.resources | nindent 12 }}
+          volumeMounts:
+            - name: redis-data
+              mountPath: /data
+      volumes:
+        - name: redis-data
+          persistentVolumeClaim:
+            claimName: {{ include "kainos.fullname" . }}-redis-pvc
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "kainos.fullname" . }}-redis
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "kainos.labels" . | nindent 4 }}
+    app.kubernetes.io/component: redis
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.infrastructure.redis.port }}
+      targetPort: redis
+      protocol: TCP
+      name: redis
+  selector:
+    {{- include "kainos.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: redis
+{{- end }}
+
+{{- if .Values.infrastructure.nats.enabled }}
+---
+# NATS
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "kainos.fullname" . }}-nats
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "kainos.labels" . | nindent 4 }}
+    app.kubernetes.io/component: nats
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "kainos.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: nats
+  template:
+    metadata:
+      labels:
+        {{- include "kainos.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: nats
+    spec:
+      containers:
+        - name: nats
+          image: {{ .Values.infrastructure.nats.image }}
+          ports:
+            - name: client
+              containerPort: {{ .Values.infrastructure.nats.clientPort }}
+            - name: monitoring
+              containerPort: {{ .Values.infrastructure.nats.monitoringPort }}
+          args:
+            - "-js"
+            - "-m"
+            - "{{ .Values.infrastructure.nats.monitoringPort }}"
+          resources:
+            {{- toYaml .Values.infrastructure.nats.resources | nindent 12 }}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "kainos.fullname" . }}-nats
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "kainos.labels" . | nindent 4 }}
+    app.kubernetes.io/component: nats
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - name: client
+      port: {{ .Values.infrastructure.nats.clientPort }}
+      targetPort: client
+      protocol: TCP
+    - name: monitoring
+      port: {{ .Values.infrastructure.nats.monitoringPort }}
+      targetPort: monitoring
+      protocol: TCP
+  selector:
+    {{- include "kainos.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: nats
+{{- end }}
+
+{{- if .Values.infrastructure.temporal.enabled }}
+---
+# Temporal
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "kainos.fullname" . }}-temporal
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "kainos.labels" . | nindent 4 }}
+    app.kubernetes.io/component: temporal
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "kainos.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: temporal
+  template:
+    metadata:
+      labels:
+        {{- include "kainos.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: temporal
+    spec:
+      containers:
+        - name: temporal
+          image: {{ .Values.infrastructure.temporal.image }}
+          ports:
+            - name: frontend
+              containerPort: {{ .Values.infrastructure.temporal.port }}
+          env:
+            - name: DB
+              value: "postgres12"
+            - name: DB_PORT
+              value: "{{ .Values.infrastructure.postgres.port }}"
+            - name: POSTGRES_USER
+              value: "kainos"
+            - name: POSTGRES_PWD
+              value: "password"
+            - name: POSTGRES_SEEDS
+              value: "{{ include "kainos.fullname" . }}-postgres"
+            - name: SKIP_SCHEMA_SETUP
+              value: "true"
+          resources:
+            {{- toYaml .Values.infrastructure.temporal.resources | nindent 12 }}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "kainos.fullname" . }}-temporal
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "kainos.labels" . | nindent 4 }}
+    app.kubernetes.io/component: temporal
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.infrastructure.temporal.port }}
+      targetPort: frontend
+      protocol: TCP
+      name: frontend
+  selector:
+    {{- include "kainos.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: temporal
+{{- end }}

@@ -131,6 +131,11 @@ func (s *HttpServer) Start() {
 			return
 		}
 	}()
+	s.router.GET("/healthz", func(c *gin.Context) {
+		c.JSON(200, gin.H{
+			"status": "ok",
+		})
+	})
 	log.Info().Msgf("Starting server on port %d", s.cfg.ServerPort)
 	if err := s.server.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) && err != nil {
 		log.Fatal().Err(err).Msg("Failed to start server")
