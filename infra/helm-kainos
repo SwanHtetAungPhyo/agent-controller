@@ -43,17 +43,17 @@ check_cluster() {
 # Build and load Docker images
 build_images() {
     log_info "Building Docker images..."
-    
+
     log_info "Building core-service..."
     docker build -t core-service:latest ./core
-    
+
     log_info "Building email-service..."
     docker build -t email-service:latest ./email
-    
+
     log_info "Loading images into kind cluster..."
     kind load docker-image core-service:latest --name kainos-cluster
     kind load docker-image email-service:latest --name kainos-cluster
-    
+
     log_success "Images built and loaded successfully"
 }
 
@@ -62,18 +62,18 @@ deploy() {
     check_helm
     check_cluster
     build_images
-    
+
     log_info "Deploying Kainos with Helm..."
-    
+
     # Create namespace if it doesn't exist
     kubectl create namespace $NAMESPACE --dry-run=client -o yaml | kubectl apply -f -
-    
+
     # Install or upgrade the chart
     helm upgrade --install $RELEASE_NAME $CHART_PATH \
         --namespace $NAMESPACE \
         --wait \
         --timeout 10m
-    
+
     log_success "Deployment completed!"
     status
 }

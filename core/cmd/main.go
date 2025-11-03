@@ -1,14 +1,16 @@
 package main
 
 import (
+	"context"
 	"os"
-	"os/signal"
 	"time"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"stock-agent.io/cmd/server"
-	"stock-agent.io/configs"
+	"go.uber.org/fx"
+	"stock-agent.io/internal/database"
+	fxModules "stock-agent.io/internal/fx"
+	"stock-agent.io/internal/server"
 )
 
 func init() {
@@ -19,25 +21,40 @@ func init() {
 		TimeFormat: time.RFC3339,
 		NoColor:    false,
 	}
-	file, err := os.OpenFile("app.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o666)
-	if err != nil {
-		log.Fatal().Err(err).Msg("Failed to open log file")
-	}
-	multi := zerolog.MultiLevelWriter(consoleWriter, file)
-	log.Logger = zerolog.New(multi).With().Timestamp().Logger()
+
+	// Use console output only in containerized environment
+	log.Logger = zerolog.New(consoleWriter).With().Timestamp().Logger()
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 }
-func main() {
-	cfg := configs.NewAppConfig()
-	log.Info().Interface("config", cfg).Msg("Starting application")
-	app := server.NewHttpServer(cfg)
-	go func() {
-		app.Start()
-	}()
 
-	signalChan := make(chan os.Signal, 1)
-	signal.Notify(signalChan, os.Interrupt)
-	<-signalChan
-	log.Info().Msg("Shutting down...")
-	app.Stop()
+func main() {
+	app := fx.New(
+		fxModules.ConfigModule,
+		database.DatabaseModule(),
+		fxModules.NATSModule,
+		fxModules.EventsModule,
+		fxModules.MiddlewareModule,
+		fxModules.HandlersModule,
+		fxModules.ServerModule,
+		fx.Invoke(func(server *server.HTTPServer, lc fx.Lifecycle) {
+			server.Start(lc)
+		}),
+	)
+
+	if err := app.Start(context.Background()); err != nil {
+		log.Fatal().Err(err).Msg("Failed to start application")
+	}
+
+	log.Info().Msg("Application started successfully")
+
+	<-app.Done()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	if err := app.Stop(ctx); err != nil {
+		log.Error().Err(err).Msg("Error during application shutdown")
+	}
+
+	log.Info().Msg("Application stopped gracefully")
 }

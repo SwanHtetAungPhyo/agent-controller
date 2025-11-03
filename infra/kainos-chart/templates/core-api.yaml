@@ -25,6 +25,7 @@ data:
   APP_TEMPORAL_HOSTPORT: {{ .Values.coreApi.temporal.hostPort | quote }}
   APP_TEMPORAL_NAMESPACE: {{ .Values.coreApi.temporal.namespace | quote }}
   APP_TEMPORAL_TLS: {{ .Values.coreApi.temporal.tls | quote }}
+  APP_NATS_URL: {{ .Values.coreApi.nats.url | quote }}
   CORS_ALLOW_ORIGINS: {{ .Values.coreApi.cors.allowOrigins | quote }}
   CORS_ALLOW_METHODS: {{ .Values.coreApi.cors.allowMethods | quote }}
   CORS_ALLOW_HEADERS: {{ .Values.coreApi.cors.allowHeaders | quote }}

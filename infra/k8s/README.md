@@ -5,7 +5,7 @@ Clean and simple Kubernetes deployment for the Kainos application stack.
 ## 🏗️ Architecture
 
 - **Core API**: Main application service (Go)
-- **Email Service**: Email processing service (Go) 
+- **Email Service**: Email processing service (Go)
 - **NATS**: Message broker for inter-service communication
 - **Redis**: Caching and session storage
 - **PostgreSQL**: Primary database

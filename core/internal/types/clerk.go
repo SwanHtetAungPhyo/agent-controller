@@ -1,6 +1,6 @@
 package types
 
-import "github.com/go-jose/go-jose/v3/json"
+import "encoding/json"
 
 type ClerkWebhookEvent struct {
 	Data            json.RawMessage `json:"data"`

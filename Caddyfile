@@ -1,0 +1,102 @@
+https://api.kainos.local {
+    tls /certs/localhost+6.pem /certs/localhost+6-key.pem
+
+    header {
+        Access-Control-Allow-Origin "https://localhost:3000"
+        Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+        Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With, Accept, Origin, Cache-Control, X-File-Name"
+        Access-Control-Allow-Credentials "true"
+        Access-Control-Max-Age "86400"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "SAMEORIGIN"
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy "strict-origin-when-cross-origin"
+    }
+
+    @options method OPTIONS
+    respond @options 204
+
+    handle /api/core/* {
+        uri strip_prefix /api/core
+        reverse_proxy https://core-api:8443 {
+            transport http {
+                tls_insecure_skip_verify
+            }
+            header_up Host {upstream_hostport}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+
+    handle /api/email/* {
+        uri strip_prefix /api/email
+        reverse_proxy https://email-service:8444 {
+            transport http {
+                tls_insecure_skip_verify
+            }
+            header_up Host {upstream_hostport}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+
+    handle /health {
+        respond "OK" 200
+    }
+
+    handle {
+        respond "Not Found" 404
+    }
+}
+
+https://localhost:9443 {
+    tls /certs/localhost+6.pem /certs/localhost+6-key.pem
+
+    header {
+        Access-Control-Allow-Origin "https://localhost:3000"
+        Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+        Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With, Accept, Origin, Cache-Control, X-File-Name"
+        Access-Control-Allow-Credentials "true"
+        Access-Control-Max-Age "86400"
+        X-Content-Type-Options "nosniff"
+    }
+
+    @options method OPTIONS
+    respond @options 204
+
+    handle /api/core/* {
+        uri strip_prefix /api/core
+        reverse_proxy https://core-api:8443 {
+            transport http {
+                tls_insecure_skip_verify
+            }
+            header_up Host {upstream_hostport}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+
+    handle /api/email/* {
+        uri strip_prefix /api/email
+        reverse_proxy https://email-service:8444 {
+            transport http {
+                tls_insecure_skip_verify
+            }
+            header_up Host {upstream_hostport}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+
+    handle /health {
+        respond "OK" 200
+    }
+
+    handle {
+        respond "Not Found" 404
+    }
+}

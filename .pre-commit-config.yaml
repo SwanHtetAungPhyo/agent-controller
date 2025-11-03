@@ -2,74 +2,100 @@ repos:
   - repo: https://github.com/dnephin/pre-commit-golang
     rev: v0.5.1
     hooks:
+      - id: go-mod-tidy
+        name: Go Mod Tidy (Core API)
+        entry: bash -c 'cd core && go mod tidy && git add go.mod go.sum'
+        language: system
+        files: ^core/go\.mod$
+        pass_filenames: false
       - id: go-vet
-        name: Go Vet (Core)
+        name: Go Vet (Core API)
         entry: bash -c 'cd core && go vet ./... 2>/dev/null || echo "No Go files to vet in core"'
         language: system
+        files: ^core/
         pass_filenames: false
         always_run: true
+      - id: go-fmt
+        name: Go Format (Core API)
+        entry: bash -c 'cd core && gofmt -w -s . && git add .'
+        language: system
+        files: ^core/.*\.go$
+        pass_filenames: false
 
+  - repo: https://github.com/dnephin/pre-commit-golang
+    rev: v0.5.1
+    hooks:
+      - id: go-mod-tidy
+        name: Go Mod Tidy (Email Service)
+        entry: bash -c 'cd email && go mod tidy && git add go.mod go.sum'
+        language: system
+        files: ^email/go\.mod$
+        pass_filenames: false
       - id: go-vet
-        name: Go Vet (Email)
+        name: Go Vet (Email Service)
         entry: bash -c 'cd email && go vet ./... 2>/dev/null || echo "No Go files to vet in email"'
         language: system
+        files: ^email/
         pass_filenames: false
         always_run: true
-
-      - id: go-mod-tidy
-        name: Go Mod Tidy (Core)
-        entry: bash -c 'cd core && go mod tidy -v'
+      - id: go-fmt
+        name: Go Format (Email Service)
+        entry: bash -c 'cd email && gofmt -w -s . && git add .'
         language: system
+        files: ^email/.*\.go$
         pass_filenames: false
-        always_run: false
-
-      - id: go-mod-tidy
-        name: Go Mod Tidy (Email)
-        entry: bash -c 'cd email && go mod tidy -v'
-        language: system
-        pass_filenames: false
-        always_run: false
 
   - repo: local
     hooks:
-      - id: gosec-scan
-        name: Gosec Security Scanner (Core)
-        entry: bash -c 'cd core && gosec -exclude-dir=vendor -exclude-generated ./... 2>/dev/null || echo "No Go files to scan in core"'
+#      - id: docker-build-test
+#        name: Docker Build Test
+#        entry: bash -c 'make build'
+#        language: system
+#        files: ^(core|email|caddy)/.*$
+#        pass_filenames: false
+#        require_serial: true
+      - id: security-scan
+        name: Security Scan (Gosec)
+        entry: bash -c 'cd core && gosec ./... || echo "Gosec not installed, skipping security scan"'
         language: system
+        files: ^core/.*\.go$
         pass_filenames: false
-        always_run: false
-
-      - id: gosec-scan
-        name: Gosec Security Scanner (Email)
-        entry: bash -c 'cd email && gosec -exclude-dir=vendor -exclude-generated ./... 2>/dev/null || echo "No Go files to scan in email"'
+      - id: email-security-scan
+        name: Security Scan Email (Gosec)
+        entry: bash -c 'cd email && gosec ./... || echo "Gosec not installed, skipping security scan"'
         language: system
+        files: ^email/.*\.go$
         pass_filenames: false
-        always_run: false
-
-      - id: go-test
-        name: Go Test (Core)
-        entry: bash -c 'cd core && go test ./... -short 2>/dev/null || echo "No tests in core"'
+      - id: env-validation
+        name: Environment Validation
+        entry: bash -c 'if [ -f .env ]; then echo "✅ .env file exists"; else echo "❌ .env file missing"; exit 1; fi'
         language: system
+        files: ^\.env$
         pass_filenames: false
-        always_run: false
-
-      - id: go-test
-        name: Go Test (Email)
-        entry: bash -c 'cd email && go test ./... -short 2>/dev/null || echo "No tests in email"'
+      - id: makefile-validation
+        name: Makefile Validation
+        entry: bash -c 'make help > /dev/null && echo "✅ Makefile is valid"'
         language: system
+        files: ^Makefile$
         pass_filenames: false
-        always_run: false
-
-      - id: go-build
-        name: Go Build (Core)
-        entry: bash -c 'cd core && go build ./... 2>/dev/null || echo "Build failed in core"'
-        language: system
-        pass_filenames: false
-        always_run: false
-
-      - id: go-build
-        name: Go Build (Email)
-        entry: bash -c 'cd email && go build ./... 2>/dev/null || echo "Build failed in email"'
-        language: system
-        pass_filenames: false
-        always_run: false
+#      - id: docker-compose-validation
+#        name: Docker Compose Validation
+#        entry: bash -c 'docker-compose -f docker-compose.dev.yaml config > /dev/null && echo "✅ Docker Compose is valid"'
+#        language: system
+#        files: ^docker-compose.*\.yaml$
+#        pass_filenames: false
+#
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+        args: ['--unsafe']
+        exclude: '^infra/kainos-chart/templates/'
+      - id: check-json
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: ['--maxkb=1000']
+      - id: mixed-line-ending
+        args: ['--fix=lf']

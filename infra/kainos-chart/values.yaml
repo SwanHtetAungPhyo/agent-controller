@@ -20,7 +20,7 @@ coreApi:
   enabled: true
   replicaCount: 2
   port: 8081
-  
+
   # Environment variables
   env:
     appName: "kainos-first-service"
@@ -28,26 +28,30 @@ coreApi:
     appDebug: false
     serverHost: "0.0.0.0"
     jwtTtl: "8640"
-    
+
   # Database configuration
   database:
     host: postgres
     port: 5432
     name: kainos
     sslMode: disable
-    
-  # Redis configuration  
+
+  # Redis configuration
   redis:
     host: redis
     port: 6379
     db: 0
-    
+
   # Temporal configuration
   temporal:
     hostPort: "temporal:7233"
     namespace: default
     tls: false
-    
+
+  # NATS configuration
+  nats:
+    url: "nats://nats:4222"
+
   # CORS configuration
   cors:
     allowOrigins: "*"
@@ -70,12 +74,12 @@ emailService:
   enabled: true
   replicaCount: 2
   port: 8082
-  
+
   env:
     natsUrl: "nats://nats:4222"
     topic: "email-notifications"
     email: "your-email@example.com"
-    
+
   resources:
     requests:
       memory: "256Mi"
@@ -99,7 +103,7 @@ infrastructure:
       limits:
         memory: "1Gi"
         cpu: "1000m"
-        
+
   # Redis
   redis:
     enabled: true
@@ -113,7 +117,7 @@ infrastructure:
       limits:
         memory: "512Mi"
         cpu: "500m"
-        
+
   # NATS
   nats:
     enabled: true
@@ -127,7 +131,7 @@ infrastructure:
       limits:
         memory: "512Mi"
         cpu: "500m"
-        
+
   # Temporal
   temporal:
     enabled: true
@@ -155,7 +159,7 @@ secrets:
 # Service configuration
 service:
   type: ClusterIP
-  
+
 # Ingress (disabled by default)
 ingress:
   enabled: false

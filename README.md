@@ -1,201 +1,519 @@
-# AI Agent Workflow Controller
+# Kainos Microservices Platform
 
-A part of the application of an AI agent system which automates AI agents based on user schedules.
+Production-ready microservices platform with SSL, CORS, and event-driven email functionality.
 
-## Technology Used
+## Architecture
 
-- **Go** (1.25.1) - Backend programming language
-- **Temporal** - Workflow execution engine for automation
-- **Redis** - Caching mechanism
-- **PostgreSQL** - Primary database
-- **Terraform** - Infrastructure as Code automation
-- **Ansible** - Configuration automation tool
-- **Docker** - Containerization platform
+```
+Frontend (https://localhost:3000)
+    ↓ HTTPS + CORS
+Caddy Gateway (https://localhost:9443 | https://api.kainos.local)
+    ↓ SSL Termination & Load Balancing
+┌─────────────────┬─────────────────┐
+│   Core API      │  Email Service  │
+│  (port 8443)    │  (port 8444)    │
+└─────────────────┴─────────────────┘
+    ↓ NATS Events        ↑ NATS Listener
+         NATS Server (port 4222)
+         PostgreSQL (port 5432)
+         Redis (port 6379)
+```
 
 ## Quick Start
 
-```shell
-# Clone the repository
-git clone https://github.com/SwanHtetAungPhyo/agent-controller
+### For New Developers
 
-# Start services with Docker Compose
-docker compose up -d
+```bash
+# Clone repository
+git clone <repository-url>
+cd kainos-microservices
 
-# Check running services
-docker ps
+# Complete setup (installs tools, generates certificates, configures environment)
+make setup
 
-# Infrastructure setup with Terraform
-terraform init
-terraform validate
-terraform plan
+# Start development environment
+make dev
 
-# Select workspace and apply
-terraform workspace list
-terraform workspace select development
-terraform apply
-
-# Configuration management with Ansible
-ansible all -i inventory/hosts.ini -m ping
-ansible all -i playbooks/docker.yaml
+# Test functionality
+make test
 ```
 
-## Project Structure
+### Manual Setup
 
-```
-├── README.md
-├── configs/
-├── core/
-│   ├── Dockerfile
-│   ├── cmd/
-│   │   ├── main.go
-│   │   └── server/
-│   │       ├── circuitBreakerSeup.go
-│   │       ├── dataseSetup.go
-│   │       ├── handlerSetup.go
-│   │       ├── server.go
-│   │       ├── shutdown.go
-│   │       └── temporalSetup.go
-│   ├── configs/
-│   │   └── config.go
-│   ├── db/
-│   │   ├── migrations/
-│   │   │   ├── 000001_schema.down.sql
-│   │   │   ├── 000001_schema.up.sql
-│   │   │   ├── 000002_workflow.down.sql
-│   │   │   └── 000002_workflow.up.sql
-│   │   ├── query/
-│   │   │   ├── user.sql
-│   │   │   └── workflows.sql
-│   │   ├── schema/
-│   │   │   └── schema.sql
-│   │   └── sqlc/
-│   │       ├── db.go
-│   │       ├── models.go
-│   │       ├── querier.go
-│   │       ├── store.go
-│   │       ├── user.sql.go
-│   │       └── workflows.sql.go
-│   ├── dynamicconfig/
-│   │   └── development-sql.yaml
-│   ├── go.mod
-│   ├── go.sum
-│   ├── internal/
-│   │   ├── execution/
-│   │   │   ├── activities/
-│   │   │   │   └── manager.go
-│   │   │   ├── worker/
-│   │   │   │   └── worker.go
-│   │   │   └── workflows/
-│   │   │       ├── manger.go
-│   │   │       └── stockSummeryWorkflow.go
-│   │   ├── handlers/
-│   │   │   ├── users/
-│   │   │   │   ├── handle_clerk_webhook.go
-│   │   │   │   ├── handle_user_delete.go
-│   │   │   │   ├── handle_user_update.go
-│   │   │   │   ├── handler.go
-│   │   │   │   └── hanlde_user_create.go
-│   │   │   └── workflows/
-│   │   │       ├── handle_summeryWorkFlow.go
-│   │   │       └── handler.go
-│   │   ├── middleware/
-│   │   │   ├── clerkMiddleWare.go
-│   │   │   └── manager.go
-│   │   ├── routes/
-│   │   │   └── routes.go
-│   │   └── types/
-│   │       ├── clerk.go
-│   │       ├── keys.go
-│   │       ├── response.go
-│   │       └── workflows.go
-│   ├── makefile
-│   ├── pkg/
-│   │   └── circuitBreaker/
-│   │       └── circuitBreaker.go
-│   ├── sqlc.yaml
-│   └── utils/
-│       └── cronParser.go
-├── docker-compose.yaml
-├── infra/
-│   ├── ansible/
-│   │   ├── ansible.cfg
-│   │   ├── files/
-│   │   │   └── docker-compose.yaml
-│   │   ├── inventory/
-│   │   │   └── host.ini
-│   │   └── playbook/
-│   │       └── docker.yml
-│   └── iac/
-│       ├── main.tf
-│       ├── outputs.tf
-│       └── variables.tf
-└── tree.txt
+If you prefer to install tools manually:
+
+```bash
+# Install required tools
+make install-tools
+
+# Generate SSL certificates
+make cert
+
+# Configure environment
+cp .env.example .env
+# Edit .env with your API keys
+
+# Setup git hooks
+make setup-hooks
+
+# Start development environment
+make dev
 ```
 
-## Core Components
+### Required Tools
 
-### Application Structure
-- **`core/`** - Main Go application codebase
-- **`cmd/main.go`** - Application entry point
-- **`internal/`** - Private application code
-    - `execution/` - Temporal workflow execution logic
-    - `handlers/` - HTTP request handlers
-    - `middleware/` - HTTP middleware components
-    - `routes/` - API route definitions
+The `make install-tools` command will install:
+- Docker & Docker Compose (must be pre-installed)
+- mkcert (SSL certificate generation)
+- pre-commit (git hooks framework)
+- gosec (Go security scanner)
+- golangci-lint (Go linter)
 
-### Database Layer
-- **`db/migrations/`** - Database schema migrations
-- **`db/query/`** - SQL queries for sqlc
-- **`db/sqlc/`** - Generated Go database code
+### Production Deployment
+```bash
+# Configure production environment
+cp .env.example .env
+# Set production values in .env
 
-### Infrastructure
-- **`infra/iac/`** - Terraform infrastructure code
-- **`infra/ansible/`** - Ansible configuration management
-- **`docker-compose.yaml`** - Local development environment
+# Deploy to production
+make prod
+```
 
-## Key Features
+## API Endpoints
 
-- **Workflow Automation** - Temporal-based workflow execution
-- **Circuit Breaker Pattern** - Fault tolerance implementation
-- **Cron-based Scheduling** - Automated task scheduling
-- **RESTful API** - HTTP API for workflow management
-- **Database Migrations** - Version-controlled schema changes
-- **Containerized Deployment** - Docker-based deployment
+### Gateway URLs
+- **Development**: `https://localhost:9443`
+- **Domain**: `https://api.kainos.local`
+- **Production**: `https://app.kainos.it.com`
 
-## Development
+### Health Checks
+```bash
+# Gateway health
+curl -k https://localhost:9443/health
 
-### Prerequisites
-- Go 1.25.1
-- Docker and Docker Compose
-- Terraform
-- Ansible
+# Core API health
+curl -k https://localhost:9443/api/core/healthz
 
-### Local Development
-1. Copy environment template:
-   ```bash
-   cp .env.example .env
-   ```
+# Email service health
+curl -k https://localhost:9443/api/email/healthz
 
-2. Start dependencies:
-   ```bash
-   docker compose up -d
-   ```
+# Email service status
+curl -k https://localhost:9443/api/email/api/v1/status
+```
 
-3. Run the application:
-   ```bash
-   cd core
-   go run cmd/main.go
-   ```
+## Email Functionality Testing
 
-## Services
+### 1. Direct Email Sending
+```bash
+# Send welcome email
+curl -k -X POST https://localhost:9443/api/email/api/v1/send-test-email \
+  -H "Content-Type: application/json" \
+  -H "Origin: https://localhost:3000" \
+  -d '{
+    "to": "swanhtetaungp@gmail.com",
+    "subject": "Welcome to Kainos!",
+    "name": "Swan Htet Aung",
+    "type": "welcome"
+  }'
 
-The application consists of:
-- **Main Application** - Go REST API server
-- **PostgreSQL** - Primary database
-- **Redis** - Caching layer
-- **Temporal** - Workflow engine
-- **Temporal UI** - Workflow monitoring interface
+# Send general email
+curl -k -X POST https://localhost:9443/api/email/api/v1/send-test-email \
+  -H "Content-Type: application/json" \
+  -H "Origin: https://localhost:3000" \
+  -d '{
+    "to": "swanhtetaungp@gmail.com",
+    "subject": "General Notification",
+    "name": "Swan Htet Aung",
+    "type": "general"
+  }'
+```
 
----
+### 2. User Event Triggering (Full Flow)
+```bash
+# Trigger user created event (sends welcome email)
+curl -k -X POST https://localhost:9443/api/core/api/v1/test-user-event \
+  -H "Content-Type: application/json" \
+  -H "Origin: https://localhost:3000" \
+  -d '{
+    "email": "swanhtetaungp@gmail.com",
+    "first_name": "Swan",
+    "last_name": "Htet Aung",
+    "event_type": "user.created"
+  }'
 
-*Part of an AI agent system for automated workflow management based on user schedules.*
+# Trigger user updated event
+curl -k -X POST https://localhost:9443/api/core/api/v1/test-user-event \
+  -H "Content-Type: application/json" \
+  -H "Origin: https://localhost:3000" \
+  -d '{
+    "email": "swanhtetaungp@gmail.com",
+    "first_name": "Swan",
+    "last_name": "Htet Aung",
+    "event_type": "user.updated"
+  }'
+
+# Trigger user deleted event
+curl -k -X POST https://localhost:9443/api/core/api/v1/test-user-event \
+  -H "Content-Type: application/json" \
+  -H "Origin: https://localhost:3000" \
+  -d '{
+    "email": "swanhtetaungp@gmail.com",
+    "event_type": "user.deleted"
+  }'
+```
+
+### 3. CORS Testing
+```bash
+# Test CORS preflight
+curl -k -I -X OPTIONS \
+  -H "Origin: https://localhost:3000" \
+  -H "Access-Control-Request-Method: POST" \
+  -H "Access-Control-Request-Headers: Content-Type,Authorization" \
+  https://localhost:9443/api/email/api/v1/send-test-email
+
+# Test with wrong origin (should not have CORS headers)
+curl -k -I -X OPTIONS \
+  -H "Origin: https://evil.com" \
+  -H "Access-Control-Request-Method: POST" \
+  https://localhost:9443/api/email/api/v1/send-test-email
+```
+
+### 4. Domain Testing
+```bash
+# Test via domain name
+curl -k -X POST https://api.kainos.local/api/email/api/v1/send-test-email \
+  -H "Content-Type: application/json" \
+  -H "Origin: https://localhost:3000" \
+  -d '{
+    "to": "swanhtetaungp@gmail.com",
+    "subject": "Domain Test Email",
+    "name": "Swan Htet Aung",
+    "type": "welcome"
+  }'
+```
+
+### 5. Direct Service Access
+```bash
+# Direct core API access
+curl -k https://localhost:8443/healthz
+
+# Direct email service access
+curl -k https://localhost:8444/healthz
+
+# Direct email service status
+curl -k https://localhost:8444/api/v1/status
+```
+
+## Service Management
+
+### Development Commands
+```bash
+# Start development environment
+make dev
+
+# Build all services
+make build
+
+# Run tests
+make test
+
+# View service logs
+make logs
+
+# Check service status
+make status
+
+# Restart services
+make restart
+
+# Stop services
+make stop
+
+# Clean up
+make clean
+```
+
+### Production Commands
+```bash
+# Start production environment
+make prod
+
+# Deploy to production
+make deploy
+```
+
+## Configuration
+
+### Environment Variables (.env)
+```bash
+# Application
+APP_NAME=kainos-core-service
+APP_APP_ENVIRONMENT=development
+APP_APP_DEBUG=true
+APP_SERVER_HOST=0.0.0.0
+APP_SERVER_PORT=8081
+
+# Authentication
+CLERK_SECRET=your_clerk_secret_key
+APP_JWT_SECRET=your_jwt_secret_key_here
+APP_JWT_TTL=8640
+JWT_SECRET=your_jwt_secret_key_here
+
+# Database
+APP_DATABASE_HOST=postgresql
+APP_DATABASE_PORT=5432
+APP_DATABASE_USERNAME=kainos
+APP_DATABASE_PASSWORD=your_secure_database_password
+APP_DATABASE_NAME=kainos
+APP_DATABASE_SSL_MODE=disable
+DATABASE_PASSWORD=your_secure_database_password
+POSTGRES_PASSWORD=your_secure_database_password
+
+# Redis
+APP_REDIS_HOST=redis
+APP_REDIS_PORT=6379
+APP_REDIS_PASSWORD=your_secure_redis_password
+APP_REDIS_DB=0
+REDIS_PASSWORD=your_secure_redis_password
+
+# Temporal
+APP_TEMPORAL_HOSTPORT=localhost:7233
+APP_TEMPORAL_NAMESPACE=default
+APP_TEMPORAL_TLS=false
+
+# NATS
+APP_NATS_URL=nats://nats:4222
+NATS_URL=nats://nats:4222
+NATS_MAX_RECONNECT=5
+NATS_RECONNECT_WAIT=2s
+NATS_TIMEOUT=10s
+
+# Svix Webhooks
+APP_SVIX_SECRET=your_svix_secret_key
+APP_SVIX_APP_ID=your_svix_app_id
+SVIX_SECRET=your_svix_secret_key
+SVIX_APP_ID=your_svix_app_id
+
+# Email Service
+TOPIC=email.send
+RESEND_API_KEY=your_resend_api_key
+FROM_EMAIL=noreply@kainos.it.com
+FROM_NAME=Kainos Team
+
+# CORS
+CORS_ALLOW_ORIGINS=https://localhost:3000,https://app.kainos.it.com
+CORS_ALLOW_METHODS=GET,POST,PUT,PATCH,DELETE,HEAD,OPTIONS
+CORS_ALLOW_HEADERS=Origin,Content-Length,Content-Type,Authorization
+CORS_ALLOW_CREDENTIALS=true
+CORS_MAX_AGE=43200
+```
+
+## SSL Certificates
+
+### Development (mkcert)
+```bash
+# Generate certificates
+make cert
+
+# Certificates created:
+# - ./certs/localhost+6.pem (Caddy Gateway)
+# - ./certs/core-api.pem (Core API)
+# - ./certs/email-service.pem (Email Service)
+```
+
+### Production
+- Caddy automatically manages Let's Encrypt certificates
+- Configure DNS records for your domain
+- Update Caddyfile with production domain
+
+## Monitoring & Debugging
+
+### Service Logs
+```bash
+# All service logs
+make logs
+
+# Individual service logs
+docker logs kainos-caddy
+docker logs kainos-core-api
+docker logs kainos-email-service
+docker logs kainos-nats
+```
+
+### Health Monitoring
+```bash
+# Service status
+make status
+
+# NATS monitoring
+curl -s http://localhost:8222/varz
+
+# Individual health checks
+curl -k https://localhost:9443/health
+curl -k https://localhost:8443/healthz
+curl -k https://localhost:8444/healthz
+```
+
+### Email Delivery Monitoring
+```bash
+# Check email service logs for delivery status
+docker logs kainos-email-service | grep -E "(sent|failed|error)"
+
+# Check NATS message flow
+docker logs kainos-nats | grep -E "(client|connection)"
+```
+
+## Frontend Integration
+
+### JavaScript Examples
+```javascript
+// Email sending
+const sendEmail = async (emailData) => {
+  const response = await fetch('https://localhost:9443/api/email/api/v1/send-test-email', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Origin': 'https://localhost:3000'
+    },
+    body: JSON.stringify({
+      to: emailData.email,
+      subject: emailData.subject,
+      name: emailData.name,
+      type: 'welcome'
+    })
+  });
+  return await response.json();
+};
+
+// User event triggering
+const triggerUserEvent = async (userData) => {
+  const response = await fetch('https://localhost:9443/api/core/api/v1/test-user-event', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Origin': 'https://localhost:3000'
+    },
+    body: JSON.stringify({
+      email: userData.email,
+      first_name: userData.firstName,
+      last_name: userData.lastName,
+      event_type: 'user.created'
+    })
+  });
+  return await response.json();
+};
+```
+
+### React Example
+```jsx
+import { useState } from 'react';
+
+const EmailTest = () => {
+  const [email, setEmail] = useState('swanhtetaungp@gmail.com');
+  const [name, setName] = useState('Swan Htet Aung');
+  const [loading, setLoading] = useState(false);
+
+  const sendTestEmail = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch('https://localhost:9443/api/email/api/v1/send-test-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Origin': 'https://localhost:3000'
+        },
+        body: JSON.stringify({
+          to: email,
+          subject: 'Test Email from React',
+          name: name,
+          type: 'welcome'
+        })
+      });
+      const result = await response.json();
+      console.log('Email sent:', result);
+    } catch (error) {
+      console.error('Email failed:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div>
+      <input value={email} onChange={(e) => setEmail(e.target.value)} />
+      <input value={name} onChange={(e) => setName(e.target.value)} />
+      <button onClick={sendTestEmail} disabled={loading}>
+        {loading ? 'Sending...' : 'Send Test Email'}
+      </button>
+    </div>
+  );
+};
+```
+
+## Troubleshooting
+
+### Common Issues
+
+1. **CORS Errors**
+   - Check origin in request headers
+   - Verify Caddyfile CORS configuration
+   - Ensure frontend origin matches allowed origins
+
+2. **SSL Certificate Errors**
+   - Regenerate certificates: `make cert`
+   - Check certificate files in `./certs/`
+   - Verify mkcert installation
+
+3. **Email Not Sending**
+   - Check RESEND_API_KEY in .env
+   - Verify email service logs
+   - Test with valid email address
+
+4. **Service Connection Issues**
+   - Check service status: `make status`
+   - Verify Docker network connectivity
+   - Check environment variables
+
+5. **NATS Connection Errors**
+   - Verify NATS server is running
+   - Check NATS_URL configuration
+   - Monitor NATS logs
+
+### Debug Commands
+```bash
+# Check all services
+make status
+
+# View recent logs
+make logs
+
+# Test connectivity
+curl -k https://localhost:9443/health
+
+# Check NATS
+curl -s http://localhost:8222/healthz
+
+# Restart problematic service
+docker-compose -f docker-compose.dev.yaml restart <service-name>
+```
+
+## CI/CD Pipeline
+
+The project includes GitHub Actions CI/CD pipeline:
+- **Test**: Run Go tests for all services
+- **Security**: Gosec security scanning
+- **Build**: Docker image building
+- **Deploy**: Push to Docker Hub
+- **Scan**: Container vulnerability scanning
+
+## License
+
+MIT License - see LICENSE file for details.
+
+## Support
+
+For issues and questions:
+1. Check troubleshooting section
+2. Review service logs
+3. Test with provided curl commands
+4. Create GitHub issue with logs and steps to reproduce

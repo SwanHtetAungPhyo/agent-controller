@@ -104,3 +104,4 @@ backup/
 
 # MacOS
 *.DS_Store?
+# Git hooks configured successfully

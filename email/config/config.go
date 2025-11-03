@@ -6,10 +6,14 @@ import (
 )
 
 type Config struct {
-	NatUrl string `env:"NAT_URL"`
-	Topic  string `env:"TOPIC"`
-	Email  string `env:"EMAIL"`
-	Passwd string `env:"PASSWD"`
+	NatsURL           string `env:"NATS_URL,required"`
+	NatsMaxReconnect  int    `env:"NATS_MAX_RECONNECT,required"`
+	NatsReconnectWait string `env:"NATS_RECONNECT_WAIT,required"`
+	NatsTimeout       string `env:"NATS_TIMEOUT,required"`
+	Topic             string `env:"TOPIC,required"`
+	ResendAPIKey      string `env:"RESEND_API_KEY,required"`
+	FromEmail         string `env:"FROM_EMAIL,required"`
+	FromName          string `env:"FROM_NAME,required"`
 }
 
 func NewConfig() *Config {

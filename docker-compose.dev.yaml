@@ -1,18 +1,46 @@
-version: '3.8'
-
 services:
-  # Core API Service
+  caddy:
+    build:
+      context: caddy
+      dockerfile: Dockerfile
+    container_name: kainos-caddy
+    depends_on:
+      - core-api
+      - email-service
+    networks:
+      - kainos-network
+    ports:
+      - "80:80"
+      - "443:443"
+      - "9443:9443"
+    volumes:
+      - caddy-data:/data
+      - caddy-config:/config
+      - ./certs:/certs:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "https://localhost:9443/health", "--no-check-certificate"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
   core-api:
     build:
       context: core
       dockerfile: Dockerfile
     container_name: kainos-core-api
     depends_on:
-      - postgresql
-      - redis
-      - nats
+      postgresql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+    env_file:
+      - .env
     environment:
-      - APP_NAME=kainos-first-service
+      - APP_NAME=kainos-core-service
       - APP_APP_ENVIRONMENT=development
       - APP_APP_DEBUG=true
       - APP_SERVER_HOST=0.0.0.0
@@ -21,30 +49,27 @@ services:
       - APP_DATABASE_PORT=5432
       - APP_DATABASE_NAME=kainos
       - APP_DATABASE_USERNAME=kainos
-      - APP_DATABASE_PASSWORD=password
       - APP_DATABASE_SSL_MODE=disable
       - APP_REDIS_HOST=redis
       - APP_REDIS_PORT=6379
-      - APP_REDIS_PASSWORD=redispass
       - APP_REDIS_DB=0
-      - APP_JWT_SECRET=jwt-secret-here
       - APP_JWT_TTL=8640
-      - CLERK_SECRET=clerk-secret-here
-      - APP_SVIX_SECRET=svix-secret
-      - APP_SVIX_APP_ID=svix-app-id
+      - APP_NATS_URL=nats://nats:4222
     networks:
       - kainos-network
     ports:
       - "8081:8081"
+      - "8443:8443"
+    volumes:
+      - ./certs:/certs:ro
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8081/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8081/healthz"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
 
-  # Email Service
   email-service:
     build:
       context: email
@@ -52,30 +77,36 @@ services:
     container_name: kainos-email-service
     depends_on:
       - nats
+    env_file:
+      - .env
     environment:
       - NATS_URL=nats://nats:4222
+      - NATS_MAX_RECONNECT=10
+      - NATS_RECONNECT_WAIT=2s
+      - NATS_TIMEOUT=10s
       - TOPIC=email-notifications
-      - EMAIL=your-email@example.com
-      - EMAIL_PASSWORD=emailpass
     networks:
       - kainos-network
     ports:
       - "8082:8082"
+      - "8444:8444"
+    volumes:
+      - ./certs:/certs:ro
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8082/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8082/healthz"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
 
-  # PostgreSQL Database
   postgresql:
     container_name: kainos-postgresql
     image: postgres:15-alpine
+    env_file:
+      - .env
     environment:
       POSTGRES_USER: kainos
-      POSTGRES_PASSWORD: password
       POSTGRES_DB: kainos
     networks:
       - kainos-network
@@ -91,12 +122,13 @@ services:
       timeout: 10s
       retries: 5
 
-  # Redis Cache
   redis:
     container_name: kainos-redis
     image: redis:7.2-alpine
+    env_file:
+      - .env
     command: >
-      redis-server --appendonly yes --requirepass redispass
+      redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
     networks:
       - kainos-network
     ports:
@@ -110,7 +142,6 @@ services:
       timeout: 10s
       retries: 5
 
-  # NATS Message Broker
   nats:
     container_name: kainos-nats
     image: nats:2.10-alpine
@@ -118,8 +149,8 @@ services:
     networks:
       - kainos-network
     ports:
-      - "4222:4222"  # Client connections
-      - "8222:8222"  # HTTP monitoring
+      - "4222:4222"
+      - "8222:8222"
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8222/healthz"]
@@ -135,4 +166,8 @@ volumes:
   postgres-data:
     driver: local
   redis-data:
+    driver: local
+  caddy-data:
+    driver: local
+  caddy-config:
     driver: local

@@ -40,4 +40,3 @@ sql:
             go_type: "github.com/jackc/pgx/v5/pgtype.JSON"
           - db_type: "jsonb"
             go_type: "github.com/jackc/pgx/v5/pgtype.JSON"
-

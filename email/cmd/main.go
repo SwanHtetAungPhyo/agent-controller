@@ -29,17 +29,17 @@ func main() {
 	}
 
 	cfg := server.ServerConfig{
-		NatsURL:       configs.NatUrl,
-		HealthUDPAddr: getEnv("HEALTH_UDP_ADDR", ":8080"),
+		NatsURL:           configs.NatsURL,
+		NatsMaxReconnect:  configs.NatsMaxReconnect,
+		NatsReconnectWait: configs.NatsReconnectWait,
+		NatsTimeout:       configs.NatsTimeout,
+		HealthUDPAddr:     getEnv("HEALTH_UDP_ADDR", ":8080"),
+		HTTPPort:          8082,
+		HTTPSPort:         8444,
 		EmailConfig: email.Config{
-			SMTPHost:     "",
-			SMTPPort:     0,
-			SMTPUsername: "",
-			SMTPPassword: "",
-			FromEmail:    "",
-			FromName:     "",
-			UseTLS:       false,
-			UseSSL:       false,
+			ResendAPIKey: configs.ResendAPIKey,
+			FromEmail:    configs.FromEmail,
+			FromName:     configs.FromName,
 		},
 	}
 
@@ -78,6 +78,23 @@ func setupEventHandlers(es *events.EventService) {
 			Str("event_type", "user.created").
 			Interface("data", event.Data).
 			Msg("User created event received")
+
+		if email, ok := event.Data["email"].(string); ok {
+			name, _ := event.Data["name"].(string)
+			welcomePayload := map[string]interface{}{
+				"type":    "welcome",
+				"message": "Welcome to our platform! We're excited to have you on board.",
+				"info": map[string]interface{}{
+					"to":   email,
+					"name": name,
+				},
+			}
+			es.PublishAsync("email.send", &events.Event{
+				Type:   "email.send",
+				Source: "user-service",
+				Data:   welcomePayload,
+			})
+		}
 		return nil
 	}))
 

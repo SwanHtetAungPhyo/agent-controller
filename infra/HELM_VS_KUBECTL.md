@@ -6,7 +6,7 @@
 ```
 k8s/
 ├── app.yaml           # 150+ lines
-├── infrastructure.yaml # 200+ lines  
+├── infrastructure.yaml # 200+ lines
 ├── kainos             # 150+ lines script
 └── README.md          # 100+ lines
 ```
@@ -98,7 +98,7 @@ helm upgrade --install kainos ./kainos-chart -n kainos
 # Development
 helm upgrade --install kainos ./kainos-chart -f values-dev.yaml
 
-# Production  
+# Production
 helm upgrade --install kainos ./kainos-chart -f values-prod.yaml
 
 # Override specific values
@@ -127,7 +127,7 @@ infrastructure:
     enabled: false  # Use external database
   redis:
     enabled: false  # Use external Redis
-    
+
 emailService:
   enabled: false    # Disable email service
 ```
@@ -147,7 +147,7 @@ coreApi:
       memory: "512Mi"
       cpu: "500m"
     limits:
-      memory: "2Gi" 
+      memory: "2Gi"
       cpu: "2000m"
 ```
 

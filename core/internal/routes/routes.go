@@ -19,7 +19,7 @@ func NewRoute(app *gofr.App) *Route {
 func (route *Route) Register() {
 
 	log.Debug().Msg("registering the  routes....")
-	
+
 	route.app.GET("/", func(c *gofr.Context) (any, error) {
 		infoMap := map[string]string{
 			"Server-Name": "Stock Agent",

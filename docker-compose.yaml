@@ -1,46 +1,115 @@
-
 services:
-  app:
-    build:
-      context: core
-      dockerfile: Dockerfile
-    container_name: agent-core-app
+  caddy:
+    image: swanhtetaungphyo1/kainos-caddy:latest
+    container_name: kainos-caddy
     depends_on:
-      - postgresql
-      - redis
-      - temporal
-    environment:
-      - DATABASE_URL=postgres://${APP_DATABASE_USERNAME}:${APP_DATABASE_PASSWORD}@postgresql:5432/${APP_DATABASE_NAME}?sslmode=disable
-      - REDIS_URL=redis://:${APP_REDIS_PASSWORD}@redis:6379
-      - TEMPORAL_ADDRESS=temporal:7233
-      - SERVER_PORT=8080
-    env_file:
-      - .env
+      - core-api
+      - email-service
     networks:
-      - temporal-network
+      - kainos-network
     ports:
-      - "8080:8080"
+      - "80:80"
+      - "443:443"
     volumes:
-      - ./core/app.log:/app/app.log
+      - caddy-data:/data
+      - caddy-config:/config
+      - ./certs:/certs:ro
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "https://localhost/health", "--no-check-certificate"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  core-api:
+    image: swanhtetaungphyo1/kainos-core:latest
+    container_name: kainos-core-api
+    depends_on:
+      postgresql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      - APP_NAME=kainos-core-service
+      - APP_APP_ENVIRONMENT=production
+      - APP_APP_DEBUG=false
+      - APP_SERVER_HOST=0.0.0.0
+      - APP_SERVER_PORT=8081
+      - APP_DATABASE_HOST=postgresql
+      - APP_DATABASE_PORT=5432
+      - APP_DATABASE_NAME=kainos
+      - APP_DATABASE_USERNAME=kainos
+      - APP_DATABASE_PASSWORD=${DATABASE_PASSWORD}
+      - APP_DATABASE_SSL_MODE=require
+      - APP_REDIS_HOST=redis
+      - APP_REDIS_PORT=6379
+      - APP_REDIS_PASSWORD=${REDIS_PASSWORD}
+      - APP_REDIS_DB=0
+      - APP_JWT_SECRET=${JWT_SECRET}
+      - APP_JWT_TTL=8640
+      - CLERK_SECRET=${CLERK_SECRET}
+      - APP_SVIX_SECRET=${SVIX_SECRET}
+      - APP_SVIX_APP_ID=${SVIX_APP_ID}
+      - APP_NATS_URL=nats://nats:4222
+    networks:
+      - kainos-network
+    ports:
+      - "8081:8081"
+      - "8443:8443"
+    volumes:
+      - ./certs:/certs:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8081/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  email-service:
+    image: swanhtetaungphyo1/kainos-email:latest
+    container_name: kainos-email-service
+    depends_on:
+      - nats
+    env_file:
+      - .env
+    environment:
+      - NATS_URL=nats://nats:4222
+      - NATS_MAX_RECONNECT=10
+      - NATS_RECONNECT_WAIT=2s
+      - NATS_TIMEOUT=10s
+      - TOPIC=email-notifications
+
+    networks:
+      - kainos-network
+    ports:
+      - "8082:8082"
+      - "8444:8444"
+    volumes:
+      - ./certs:/certs:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8082/healthz"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
 
   postgresql:
-    container_name: temporal-postgresql
-    image: postgres:${POSTGRESQL_VERSION}
-    environment:
-      POSTGRES_USER: ${APP_DATABASE_USERNAME}
-      POSTGRES_PASSWORD: ${APP_DATABASE_PASSWORD}
-      POSTGRES_DB: ${APP_DATABASE_NAME}
+    container_name: kainos-postgresql
+    image: postgres:15-alpine
     env_file:
       - .env
+    environment:
+      POSTGRES_USER: kainos
+      POSTGRES_DB: kainos
     networks:
-      - temporal-network
+      - kainos-network
     ports:
       - "5432:5432"
     volumes:
@@ -48,20 +117,20 @@ services:
       - ./core/db/migrations:/docker-entrypoint-initdb.d
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${APP_DATABASE_USERNAME} -d ${APP_DATABASE_NAME}"]
+      test: ["CMD-SHELL", "pg_isready -U kainos -d kainos"]
       interval: 30s
       timeout: 10s
       retries: 5
 
   redis:
-    container_name: temporal-redis
-    image: redis:${REDIS_VERSION}
-    command: >
-      redis-server --appendonly yes --requirepass ${APP_REDIS_PASSWORD}
-    networks:
-      - temporal-network
+    container_name: kainos-redis
+    image: redis:7.2-alpine
     env_file:
       - .env
+    command: >
+      redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+    networks:
+      - kainos-network
     ports:
       - "6379:6379"
     volumes:
@@ -73,45 +142,32 @@ services:
       timeout: 10s
       retries: 5
 
-  temporal:
-    container_name: temporal
-    image: temporalio/auto-setup:${TEMPORAL_VERSION}
-    depends_on:
-      postgresql:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    environment:
-      - DB=postgres12
-      - DB_PORT=5432
-      - POSTGRES_USER=${APP_DATABASE_USERNAME}
-      - POSTGRES_PWD=${APP_DATABASE_PASSWORD}
-      - POSTGRES_SEEDS=postgresql
-      - DYNAMIC_CONFIG_FILE_PATH=config/dynamicconfig/development-sql.yaml
-      - TEMPORAL_ADDRESS=temporal:7233
-      - TEMPORAL_CLI_ADDRESS=temporal:7233
-    env_file:
-      - .env
+  nats:
+    container_name: kainos-nats
+    image: nats:2.10-alpine
+    command: ["-js", "-m", "8222"]
     networks:
-      - temporal-network
+      - kainos-network
     ports:
-      - "7233:7233"
-    volumes:
-      - ./core/dynamicconfig:/etc/temporal/config/dynamicconfig
+      - "4222:4222"
+      - "8222:8222"
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:7233/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8222/healthz"]
       interval: 30s
       timeout: 10s
-      retries: 5
-
+      retries: 3
 
 networks:
-  temporal-network:
+  kainos-network:
     driver: bridge
 
 volumes:
   postgres-data:
     driver: local
   redis-data:
+    driver: local
+  caddy-data:
+    driver: local
+  caddy-config:
     driver: local

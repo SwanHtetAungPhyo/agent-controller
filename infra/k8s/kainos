@@ -41,17 +41,17 @@ check_cluster() {
 # Build and load Docker images
 build_images() {
     log_info "Building Docker images..."
-    
+
     log_info "Building core-service..."
     docker build -t core-service:latest ./core
-    
+
     log_info "Building email-service..."
     docker build -t email-service:latest ./email
-    
+
     log_info "Loading images into kind cluster..."
     kind load docker-image core-service:latest --name kainos-cluster
     kind load docker-image email-service:latest --name kainos-cluster
-    
+
     log_success "Images built and loaded successfully"
 }
 
@@ -76,14 +76,14 @@ deploy() {
     build_images
     deploy_infra
     deploy_apps
-    
+
     log_info "Waiting for deployments to be ready..."
     kubectl wait --for=condition=available --timeout=300s deployment/postgres -n $NAMESPACE
     kubectl wait --for=condition=available --timeout=300s deployment/redis -n $NAMESPACE
     kubectl wait --for=condition=available --timeout=300s deployment/nats -n $NAMESPACE
     kubectl wait --for=condition=available --timeout=300s deployment/temporal -n $NAMESPACE
     kubectl wait --for=condition=available --timeout=300s deployment/core-api -n $NAMESPACE
-    
+
     log_success "Deployment completed!"
     status
 }
@@ -155,7 +155,7 @@ port_forward() {
 # Health check
 health() {
     log_info "Checking application health..."
-    
+
     # Check if core API is accessible
     if kubectl port-forward service/core-api 8081:80 -n $NAMESPACE &> /dev/null &
     then
