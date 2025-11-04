@@ -76,7 +76,7 @@ func (h *Handler) handleUserCreated(c *gin.Context, data json.RawMessage) {
 	if len(userData.EmailAddresses) > 0 {
 		email = userData.EmailAddresses[0].EmailAddress
 	}
-
+	// TODO: Add database and create user
 	log.Info().
 		Str("user_id", userData.ID).
 		Str("email", email).
