@@ -19,7 +19,8 @@ type AppConfig struct {
 	ClerkSecret string `env:"CLERK_SECRET,required"`
 	JWTSecret   string `env:"APP_JWT_SECRET,required"`
 	JWTTTL      int    `env:"APP_JWT_TTL,required"`
-
+	//CertFile    string `env:"APP_CERT_FILE,required"`
+	//KeyFile     string `env:"APP_KEY_FILE,required"`
 	DatabaseHost     string `env:"APP_DATABASE_HOST,required"`
 	DatabasePort     int    `env:"APP_DATABASE_PORT,required"`
 	DatabaseUsername string `env:"APP_DATABASE_USERNAME,required"`

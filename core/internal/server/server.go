@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -121,7 +122,7 @@ func (s *HTTPServer) Start(lc fx.Lifecycle) {
 			// Start HTTP server
 			go func() {
 				log.Info().Msgf("Starting HTTP server on port %d", s.cfg.ServerPort)
-				if err := s.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				if err := s.server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 					log.Fatal().Err(err).Msg("Failed to start HTTP server")
 				}
 			}()
@@ -129,7 +130,7 @@ func (s *HTTPServer) Start(lc fx.Lifecycle) {
 			// Start HTTPS server
 			go func() {
 				log.Info().Msg("Starting HTTPS server on port 8443")
-				if err := httpsServer.ListenAndServeTLS("/certs/core-api.pem", "/certs/core-api-key.pem"); err != nil && err != http.ErrServerClosed {
+				if err := httpsServer.ListenAndServeTLS("./certs/core-api.pem", "./certs/core-api-key.pem"); err != nil && err != http.ErrServerClosed {
 					log.Fatal().Err(err).Msg("Failed to start HTTPS server")
 				}
 			}()

@@ -6,6 +6,8 @@ package db
 
 import (
 	"context"
+
+	"github.com/google/uuid"
 )
 
 type Querier interface {
@@ -14,8 +16,15 @@ type Querier interface {
 	CreateUserAnalysis(ctx context.Context, arg CreateUserAnalysisParams) (KainosUserAnalysis, error)
 	CreateUserWorkflow(ctx context.Context, arg CreateUserWorkflowParams) (KainosUserWorkflow, error)
 	CreateWorkflow(ctx context.Context, arg CreateWorkflowParams) (KainosWorkflow, error)
+	GetSystemAnalysis(ctx context.Context) ([]SystemDefinedAnalysis, error)
+	GetUserAnalysis(ctx context.Context) ([]GetUserAnalysisRow, error)
+	GetUserByClerkID(ctx context.Context, clerkID string) (KainosUser, error)
+	GetUserByID(ctx context.Context, id uuid.UUID) (KainosUser, error)
 	GetUserWorkflow(ctx context.Context) ([]GetUserWorkflowRow, error)
 	GetWorkflow(ctx context.Context) ([]KainosWorkflow, error)
+	SoftDeleteUserByClerkID(ctx context.Context, clerkID string) (KainosUser, error)
+	UpdateUserByClerkID(ctx context.Context, arg UpdateUserByClerkIDParams) (KainosUser, error)
+	UpdateUserWorkflowStatus(ctx context.Context, arg UpdateUserWorkflowStatusParams) (KainosUserWorkflow, error)
 }
 
 var _ Querier = (*Queries)(nil)

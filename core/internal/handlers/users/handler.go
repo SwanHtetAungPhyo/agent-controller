@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 	db "stock-agent.io/db/sqlc"
 	"stock-agent.io/internal/events"
@@ -77,6 +78,19 @@ func (h *Handler) handleUserCreated(c *gin.Context, data json.RawMessage) {
 		email = userData.EmailAddresses[0].EmailAddress
 	}
 	// TODO: Add database and create user
+	userID := uuid.New()
+	user, err := h.store.CreateUser(c.Request.Context(), db.CreateUserParams{
+		ClerkID:   userData.ID,
+		FirstName: &userData.FirstName,
+		Email:     email,
+	})
+
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to create user")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user"})
+		return
+	}
+
 	log.Info().
 		Str("user_id", userData.ID).
 		Str("email", email).

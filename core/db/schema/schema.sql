@@ -18,7 +18,7 @@ CREATE  TABLE  IF NOT EXISTS  kainos_workflow (
     price pg_catalog.float8 default 0.0
 );
 
-CREATE TABLE  IF NOT EXISTS  kanios_user_workflow (
+CREATE TABLE  IF NOT EXISTS  kainos_user_workflow (
     id uuid primary key ,
     workflow_id uuid not null references kainos_workflow(id),
     customer_id pg_catalog.uuid not null  references  kainos_user(id),
@@ -34,7 +34,7 @@ CREATE  TABLE  IF NOT EXISTS  system_defined_analysis (
     analysis_type varchar,
     description varchar
 );
-CREATE  TABLE  IF NOT EXISTS  kanios_user_analysis (
+CREATE  TABLE  IF NOT EXISTS  kainos_user_analysis (
     id uuid primary key,
     description varchar, -- ai generated
     s3_url varchar,
