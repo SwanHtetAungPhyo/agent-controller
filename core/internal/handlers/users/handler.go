@@ -79,15 +79,15 @@ func (h *Handler) handleUserCreated(c *gin.Context, data json.RawMessage) {
 	}
 	// TODO: Add database and create user
 	userID := uuid.New()
-	user, err := h.store.CreateUser(c.Request.Context(), db.CreateUserParams{
+	_, err := h.store.CreateUser(c.Request.Context(), db.CreateUserParams{
+		ID:        userID,
 		ClerkID:   userData.ID,
 		FirstName: &userData.FirstName,
 		Email:     email,
 	})
-
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to create user")
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user"})
+		log.Error().Err(err).Msg("Failed to create user in database")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user in database"})
 		return
 	}
 
@@ -121,6 +121,17 @@ func (h *Handler) handleUserUpdated(c *gin.Context, data json.RawMessage) {
 		email = userData.EmailAddresses[0].EmailAddress
 	}
 
+	_, err := h.store.UpdateUserByClerkID(c.Request.Context(), db.UpdateUserByClerkIDParams{
+		ClerkID:   userData.ID,
+		FirstName: &userData.FirstName,
+		Email:     email,
+	})
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to update user in database")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update user in database"})
+		return
+	}
+
 	log.Info().
 		Str("user_id", userData.ID).
 		Str("email", email).
@@ -141,6 +152,13 @@ func (h *Handler) handleUserDeleted(c *gin.Context, data json.RawMessage) {
 	if err := json.Unmarshal(data, &deletedData); err != nil {
 		log.Error().Err(err).Msg("Failed to unmarshal deleted user data")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid deleted user data"})
+		return
+	}
+
+	_, err := h.store.SoftDeleteUserByClerkID(c.Request.Context(), deletedData.ID)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to delete user in database")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete user in database"})
 		return
 	}
 
