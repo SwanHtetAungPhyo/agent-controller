@@ -79,7 +79,7 @@ func (h *Handler) handleUserCreated(c *gin.Context, data json.RawMessage) {
 	}
 	// TODO: Add database and create user
 	userID := uuid.New()
-	_, err := h.store.CreateUser(c.Request.Context(), db.CreateUserParams{
+	createdUser, err := h.store.CreateUser(c.Request.Context(), db.CreateUserParams{
 		ID:        userID,
 		ClerkID:   userData.ID,
 		FirstName: &userData.FirstName,
@@ -90,13 +90,32 @@ func (h *Handler) handleUserCreated(c *gin.Context, data json.RawMessage) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user in database"})
 		return
 	}
+	//var wg sync.WaitGroup
+	//wg.Add(1)
 
-	log.Info().
-		Str("user_id", userData.ID).
-		Str("email", email).
-		Str("first_name", userData.FirstName).
-		Str("last_name", userData.LastName).
-		Msg("Processing user created event")
+	workflows, err := h.store.GetWorkflow(c.Request.Context())
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to get workflow")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get workflow"})
+	}
+	for _, workflow := range workflows {
+		status := "OFF"
+		_, err := h.store.CreateUserWorkflow(c.Request.Context(), db.CreateUserWorkflowParams{
+			ID:         uuid.New(),
+			WorkflowID: workflow.ID,
+			CustomerID: createdUser.ID,
+			MetaData:   []byte("{}"),
+			Status:     &status,
+		})
+		if err != nil {
+			log.Error().Err(err).Msg("Failed to create user workflow")
+		} else {
+			log.Info().
+				Str("user_id", userData.ID).
+				Str("workflow_name", workflow.WorkflowName).
+				Msg("Successfully created user workflow")
+		}
+	}
 
 	if err := h.eventPublisher.PublishUserCreated(
 		userData.ID,

@@ -107,7 +107,7 @@ build:
 
 dev:
 	@echo "Starting development environment..."
-	@$(DOCKER_COMPOSE_DEV) up -d
+	@$(DOCKER_COMPOSE_DEV) up --build -d
 	@echo "Services starting..."
 	@sleep 10
 	@echo "Development environment ready:"
