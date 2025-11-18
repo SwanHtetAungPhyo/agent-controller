@@ -1,0 +1,32 @@
+# Source files
+src/
+tsconfig.json
+
+# Environment files
+.env
+.env.*
+
+# Development files
+node_modules/
+*.log
+
+# Build artifacts
+*.tsbuildinfo
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Scripts
+deploy.sh
+*.sh
+
+# Documentation (keep only README)
+SETUP.md
+TESTING.md
+PRODUCTION.md
+FEATURES.md

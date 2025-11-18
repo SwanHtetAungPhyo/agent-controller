@@ -1,0 +1,41 @@
+{
+  "name": "stock-agent-core",
+  "version": "1.0.1",
+  "description": "Financial analysis agent with stock market tools and workflows",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "mastra dev",
+    "build": "tsc && mastra build",
+    "start": "mastra start",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "engines": {
+    "node": ">=20.9.0"
+  },
+  "dependencies": {
+    "@mastra/core": "^0.20.1",
+    "@mastra/libsql": "^0.15.1",
+    "@mastra/loggers": "^0.10.15",
+    "@mastra/memory": "^0.15.6",
+    "@openrouter/ai-sdk-provider": "^1.2.0",
+    "ai": "^5.0.0",
+    "dotenv": "^17.2.3",
+    "stock-agent-core": "^1.0.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^24.7.0",
+    "mastra": "^0.15.0",
+    "typescript": "^5.9.3"
+  }
+}
