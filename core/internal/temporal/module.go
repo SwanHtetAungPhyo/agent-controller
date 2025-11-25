@@ -73,7 +73,12 @@ func TemporalModule() fx.Option {
 			NewCircuitBreakerClient,
 			NewScheduleClient,
 		),
-		fx.Invoke(func(lc fx.Lifecycle, temporalClient client.Client, worker *worker.Worker) {
+		fx.Invoke(func(lc fx.Lifecycle, temporalClient client.Client, worker *worker.Worker, workflowManager *workflow.Manager) {
+			worker.RegisterWorkflow(workflowManager.ExecuteMastraWorkflow)
+			log.Info().Msg("Registered ExecuteMastraWorkflow")
+			worker.RegisterActivity(workflowManager.CallMastraAPI)
+			worker.RegisterActivity(workflowManager.StoreWorkflowResult)
+
 			lc.Append(fx.Hook{
 				OnStart: func(ctx context.Context) error {
 					go func() {
