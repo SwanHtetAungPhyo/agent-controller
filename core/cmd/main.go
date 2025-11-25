@@ -11,6 +11,7 @@ import (
 	"stock-agent.io/internal/database"
 	fxModules "stock-agent.io/internal/fx"
 	"stock-agent.io/internal/server"
+	"stock-agent.io/internal/temporal"
 )
 
 func init() {
@@ -33,6 +34,7 @@ func main() {
 		database.DatabaseModule(),
 		fxModules.NATSModule,
 		fxModules.EventsModule,
+		temporal.TemporalModule(),
 		fxModules.MiddlewareModule,
 		fxModules.HandlersModule,
 		fxModules.ServerModule,

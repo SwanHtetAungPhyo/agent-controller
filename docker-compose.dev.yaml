@@ -158,6 +158,34 @@ services:
       timeout: 10s
       retries: 3
 
+  temporal:
+    container_name: kainos-temporal
+    image: temporalio/auto-setup:latest
+    depends_on:
+      postgresql:
+        condition: service_healthy
+    environment:
+      - DB=postgres12_pgx
+      - DB_PORT=5432
+      - POSTGRES_USER=kainos
+      - POSTGRES_PWD=${DATABASE_PASSWORD}
+      - POSTGRES_SEEDS=postgresql
+      - DYNAMIC_CONFIG_FILE_PATH=config/dynamicconfig/development-sql.yaml
+    networks:
+      - kainos-network
+    ports:
+      - "7233:7233"   # Temporal gRPC
+      - "8233:8233"   # Temporal Web UI
+    volumes:
+      - ./core/dynamicconfig:/etc/temporal/config/dynamicconfig
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "tctl", "--address", "temporal:7233", "cluster", "health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
 networks:
   kainos-network:
     driver: bridge

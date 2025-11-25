@@ -77,40 +77,107 @@ func (q *Queries) CreateWorkflow(ctx context.Context, arg CreateWorkflowParams) 
 	return i, err
 }
 
-const getUserWorkflow = `-- name: GetUserWorkflow :many
-SELECT workflow_id, workflow_name, meta_data, cron_time, status, kainos_user_workflow.created_at, kainos_user_workflow.updated_at
-from kainos_user_workflow
-join kainos_workflow on kainos_user_workflow.workflow_id = kainos_workflow.id
-join kainos_user on kainos_user_workflow.customer_id = kainos_user.id
+const getUserWorkflowByID = `-- name: GetUserWorkflowByID :one
+SELECT
+    uw.id,
+    uw.workflow_id,
+    uw.customer_id,
+    uw.meta_data,
+    uw.cron_time,
+    uw.status,
+    uw.created_at,
+    uw.updated_at,
+    w.workflow_name,
+    w.workflow_description,
+    w.price
+FROM kainos_user_workflow uw
+         JOIN kainos_workflow w ON uw.workflow_id = w.id
+WHERE uw.id = $1
 `
 
-type GetUserWorkflowRow struct {
-	WorkflowID   uuid.UUID        `json:"workflow_id"`
-	WorkflowName string           `json:"workflow_name"`
-	MetaData     []byte           `json:"meta_data"`
-	CronTime     *string          `json:"cron_time"`
-	Status       *string          `json:"status"`
-	CreatedAt    pgtype.Timestamp `json:"created_at"`
-	UpdatedAt    pgtype.Timestamp `json:"updated_at"`
+type GetUserWorkflowByIDRow struct {
+	ID                  uuid.UUID        `json:"id"`
+	WorkflowID          uuid.UUID        `json:"workflow_id"`
+	CustomerID          interface{}      `json:"customer_id"`
+	MetaData            []byte           `json:"meta_data"`
+	CronTime            *string          `json:"cron_time"`
+	Status              *string          `json:"status"`
+	CreatedAt           pgtype.Timestamp `json:"created_at"`
+	UpdatedAt           pgtype.Timestamp `json:"updated_at"`
+	WorkflowName        string           `json:"workflow_name"`
+	WorkflowDescription string           `json:"workflow_description"`
+	Price               *float64         `json:"price"`
 }
 
-func (q *Queries) GetUserWorkflow(ctx context.Context) ([]GetUserWorkflowRow, error) {
-	rows, err := q.db.Query(ctx, getUserWorkflow)
+func (q *Queries) GetUserWorkflowByID(ctx context.Context, id uuid.UUID) (GetUserWorkflowByIDRow, error) {
+	row := q.db.QueryRow(ctx, getUserWorkflowByID, id)
+	var i GetUserWorkflowByIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.WorkflowID,
+		&i.CustomerID,
+		&i.MetaData,
+		&i.CronTime,
+		&i.Status,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.WorkflowName,
+		&i.WorkflowDescription,
+		&i.Price,
+	)
+	return i, err
+}
+
+const getUserWorkflowsByClerkID = `-- name: GetUserWorkflowsByClerkID :many
+
+SELECT uw.id, uw.workflow_id, uw.customer_id, uw.meta_data, uw.cron_time, uw.status, uw.created_at,
+       uw.updated_at, w.workflow_name, w.workflow_description, w.price
+FROM kainos_user_workflow uw
+JOIN kainos_workflow w ON uw.workflow_id = w.id
+JOIN kainos_user u ON uw.customer_id = u.id
+WHERE u.clerk_id = $1 AND u.deleted_at is NULL
+`
+
+type GetUserWorkflowsByClerkIDRow struct {
+	ID                  uuid.UUID        `json:"id"`
+	WorkflowID          uuid.UUID        `json:"workflow_id"`
+	CustomerID          interface{}      `json:"customer_id"`
+	MetaData            []byte           `json:"meta_data"`
+	CronTime            *string          `json:"cron_time"`
+	Status              *string          `json:"status"`
+	CreatedAt           pgtype.Timestamp `json:"created_at"`
+	UpdatedAt           pgtype.Timestamp `json:"updated_at"`
+	WorkflowName        string           `json:"workflow_name"`
+	WorkflowDescription string           `json:"workflow_description"`
+	Price               *float64         `json:"price"`
+}
+
+// -- name: GetUserWorkflow :many
+// SELECT workflow_id, workflow_name, meta_data, cron_time, status, kainos_user_workflow.created_at, kainos_user_workflow.updated_at
+// from kainos_user_workflow
+// join kainos_workflow on kainos_user_workflow.workflow_id = kainos_workflow.id
+// join kainos_user on kainos_user_workflow.customer_id = kainos_user.id;
+func (q *Queries) GetUserWorkflowsByClerkID(ctx context.Context, clerkID string) ([]GetUserWorkflowsByClerkIDRow, error) {
+	rows, err := q.db.Query(ctx, getUserWorkflowsByClerkID, clerkID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []GetUserWorkflowRow{}
+	items := []GetUserWorkflowsByClerkIDRow{}
 	for rows.Next() {
-		var i GetUserWorkflowRow
+		var i GetUserWorkflowsByClerkIDRow
 		if err := rows.Scan(
+			&i.ID,
 			&i.WorkflowID,
-			&i.WorkflowName,
+			&i.CustomerID,
 			&i.MetaData,
 			&i.CronTime,
 			&i.Status,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.WorkflowName,
+			&i.WorkflowDescription,
+			&i.Price,
 		); err != nil {
 			return nil, err
 		}
@@ -153,6 +220,38 @@ func (q *Queries) GetWorkflow(ctx context.Context) ([]KainosWorkflow, error) {
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateUserWorkflowSchedule = `-- name: UpdateUserWorkflowSchedule :one
+UPDATE kainos_user_workflow
+SET
+    cron_time = $1,
+    status = $2,
+    updated_at = NOW()
+WHERE id = $3
+RETURNING id, workflow_id, customer_id, meta_data, cron_time, status, created_at, updated_at
+`
+
+type UpdateUserWorkflowScheduleParams struct {
+	CronTime *string   `json:"cron_time"`
+	Status   *string   `json:"status"`
+	ID       uuid.UUID `json:"id"`
+}
+
+func (q *Queries) UpdateUserWorkflowSchedule(ctx context.Context, arg UpdateUserWorkflowScheduleParams) (KainosUserWorkflow, error) {
+	row := q.db.QueryRow(ctx, updateUserWorkflowSchedule, arg.CronTime, arg.Status, arg.ID)
+	var i KainosUserWorkflow
+	err := row.Scan(
+		&i.ID,
+		&i.WorkflowID,
+		&i.CustomerID,
+		&i.MetaData,
+		&i.CronTime,
+		&i.Status,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
 
 const updateUserWorkflowStatus = `-- name: UpdateUserWorkflowStatus :one

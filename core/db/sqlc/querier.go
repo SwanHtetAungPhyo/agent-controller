@@ -20,10 +20,17 @@ type Querier interface {
 	GetUserAnalysis(ctx context.Context) ([]GetUserAnalysisRow, error)
 	GetUserByClerkID(ctx context.Context, clerkID string) (KainosUser, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (KainosUser, error)
-	GetUserWorkflow(ctx context.Context) ([]GetUserWorkflowRow, error)
+	GetUserWorkflowByID(ctx context.Context, id uuid.UUID) (GetUserWorkflowByIDRow, error)
+	// -- name: GetUserWorkflow :many
+	// SELECT workflow_id, workflow_name, meta_data, cron_time, status, kainos_user_workflow.created_at, kainos_user_workflow.updated_at
+	// from kainos_user_workflow
+	// join kainos_workflow on kainos_user_workflow.workflow_id = kainos_workflow.id
+	// join kainos_user on kainos_user_workflow.customer_id = kainos_user.id;
+	GetUserWorkflowsByClerkID(ctx context.Context, clerkID string) ([]GetUserWorkflowsByClerkIDRow, error)
 	GetWorkflow(ctx context.Context) ([]KainosWorkflow, error)
 	SoftDeleteUserByClerkID(ctx context.Context, clerkID string) (KainosUser, error)
 	UpdateUserByClerkID(ctx context.Context, arg UpdateUserByClerkIDParams) (KainosUser, error)
+	UpdateUserWorkflowSchedule(ctx context.Context, arg UpdateUserWorkflowScheduleParams) (KainosUserWorkflow, error)
 	UpdateUserWorkflowStatus(ctx context.Context, arg UpdateUserWorkflowStatusParams) (KainosUserWorkflow, error)
 }
 

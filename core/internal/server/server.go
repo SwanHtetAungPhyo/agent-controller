@@ -16,6 +16,7 @@ import (
 	"stock-agent.io/configs"
 	db "stock-agent.io/db/sqlc"
 	"stock-agent.io/internal/handlers/users"
+	"stock-agent.io/internal/handlers/workflow"
 	"stock-agent.io/internal/middleware"
 )
 
@@ -100,8 +101,10 @@ func (s *HTTPServer) setupHealthRoutes() {
 func RegisterRoutes(
 	server *HTTPServer,
 	userHandler *users.Handler,
+	workflowHandler *workflow.Handler,
 ) {
 	userHandler.RegisterRoutes(server.router)
+	workflowHandler.RegisterRoutes(server.router)
 }
 
 func (s *HTTPServer) Start(lc fx.Lifecycle) {
@@ -130,7 +133,7 @@ func (s *HTTPServer) Start(lc fx.Lifecycle) {
 			// Start HTTPS server
 			go func() {
 				log.Info().Msg("Starting HTTPS server on port 8443")
-				if err := httpsServer.ListenAndServeTLS("./certs/core-api.pem", "./certs/core-api-key.pem"); err != nil && err != http.ErrServerClosed {
+				if err := httpsServer.ListenAndServeTLS("/certs/core-api.pem", "/certs/core-api-key.pem"); err != nil && err != http.ErrServerClosed {
 					log.Fatal().Err(err).Msg("Failed to start HTTPS server")
 				}
 			}()

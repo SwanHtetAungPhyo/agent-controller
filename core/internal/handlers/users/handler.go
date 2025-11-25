@@ -1,8 +1,10 @@
 package users
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
+	"sync"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -77,9 +79,10 @@ func (h *Handler) handleUserCreated(c *gin.Context, data json.RawMessage) {
 	if len(userData.EmailAddresses) > 0 {
 		email = userData.EmailAddresses[0].EmailAddress
 	}
-	// TODO: Add database and create user
+
+	// STEP 1: Save user to database
 	userID := uuid.New()
-	createdUser, err := h.store.CreateUser(c.Request.Context(), db.CreateUserParams{
+	user, err := h.store.CreateUser(c.Request.Context(), db.CreateUserParams{
 		ID:        userID,
 		ClerkID:   userData.ID,
 		FirstName: &userData.FirstName,
@@ -87,36 +90,66 @@ func (h *Handler) handleUserCreated(c *gin.Context, data json.RawMessage) {
 	})
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to create user in database")
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user in database"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user"})
 		return
 	}
-	//var wg sync.WaitGroup
-	//wg.Add(1)
 
-	workflows, err := h.store.GetWorkflow(c.Request.Context())
-	if err != nil {
-		log.Error().Err(err).Msg("Failed to get workflow")
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get workflow"})
-	}
-	for _, workflow := range workflows {
-		status := "OFF"
-		_, err := h.store.CreateUserWorkflow(c.Request.Context(), db.CreateUserWorkflowParams{
-			ID:         uuid.New(),
-			WorkflowID: workflow.ID,
-			CustomerID: createdUser.ID,
-			MetaData:   []byte("{}"),
-			Status:     &status,
-		})
+	log.Info().
+		Str("user_id", user.ID.String()).
+		Str("clerk_id", userData.ID).
+		Msg("User created in database successfully")
+
+	// STEP 2: Subscribe to workflows in background with parallel processing
+	go func(userID uuid.UUID) {
+		ctx := context.Background()
+
+		workflows, err := h.store.GetWorkflow(ctx)
 		if err != nil {
-			log.Error().Err(err).Msg("Failed to create user workflow")
-		} else {
-			log.Info().
-				Str("user_id", userData.ID).
-				Str("workflow_name", workflow.WorkflowName).
-				Msg("Successfully created user workflow")
+			log.Error().Err(err).Msg("Failed to get workflows")
+			return
 		}
-	}
 
+		// Use WaitGroup for parallel workflow creation
+		var wg sync.WaitGroup
+
+		for _, workflow := range workflows {
+			wg.Add(1)
+
+			// Create each workflow in parallel
+			go func(wf db.KainosWorkflow) {
+				defer wg.Done()
+
+				status := "OFF"
+				_, err := h.store.CreateUserWorkflow(ctx, db.CreateUserWorkflowParams{
+					ID:         uuid.New(),
+					WorkflowID: wf.ID,
+					CustomerID: userID,
+					MetaData:   []byte("{}"),
+					Status:     &status,
+				})
+				if err != nil {
+					log.Error().
+						Err(err).
+						Str("workflow_id", wf.ID.String()).
+						Msg("Failed to create user workflow")
+				} else {
+					log.Info().
+						Str("user_id", userID.String()).
+						Str("workflow_name", wf.WorkflowName).
+						Msg("User subscribed to workflow")
+				}
+			}(workflow)
+		}
+
+		// Wait for all workflows to complete
+		wg.Wait()
+		log.Info().
+			Str("user_id", userID.String()).
+			Int("workflow_count", len(workflows)).
+			Msg("All workflows subscribed successfully")
+	}(user.ID)
+
+	// STEP 3: Publish to NATS (triggers email)
 	if err := h.eventPublisher.PublishUserCreated(
 		userData.ID,
 		email,

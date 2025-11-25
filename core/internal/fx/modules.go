@@ -6,6 +6,7 @@ import (
 	"stock-agent.io/configs"
 	"stock-agent.io/internal/events"
 	"stock-agent.io/internal/handlers/users"
+	"stock-agent.io/internal/handlers/workflow"
 	"stock-agent.io/internal/middleware"
 	natsClient "stock-agent.io/internal/nats"
 	"stock-agent.io/internal/server"
@@ -27,6 +28,7 @@ var HandlersModule = fx.Module("handlers",
 	fx.Provide(
 		users.NewHandler,
 	),
+	fx.Provide(workflow.NewHandler),
 )
 
 var MiddlewareModule = fx.Module("middleware",
