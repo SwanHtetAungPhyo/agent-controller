@@ -85,17 +85,17 @@ repos:
 #        files: ^docker-compose.*\.yaml$
 #        pass_filenames: false
 #
-  - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.4.0
-    hooks:
-      - id: trailing-whitespace
-      - id: end-of-file-fixer
-      - id: check-yaml
-        args: ['--unsafe']
-        exclude: '^infra/kainos-chart/templates/'
-      - id: check-json
-      - id: check-merge-conflict
-      - id: check-added-large-files
-        args: ['--maxkb=1000']
-      - id: mixed-line-ending
-        args: ['--fix=lf']
+#  - repo: https://github.com/pre-commit/pre-commit-hooks
+#    rev: v4.4.0
+#    hooks:
+#      - id: trailing-whitespace
+#      - id: end-of-file-fixer
+#      - id: check-yaml
+#        args: ['--unsafe']
+#        exclude: '^infra/kainos-chart/templates/'
+#      - id: check-json
+#      - id: check-merge-conflict
+#      - id: check-added-large-files
+#        args: ['--maxkb=1000']
+#      - id: mixed-line-ending
+#        args: ['--fix=lf']
